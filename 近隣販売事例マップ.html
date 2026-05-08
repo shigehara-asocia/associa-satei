@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>近隣販売事例マップ｜アソシア株式会社</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root {
+  --ink: #0D1117;
+  --paper: #F5F0E8;
+  --cream: #EDE8DC;
+  --gold: #B8924A;
+  --gold-light: #D4AF6E;
+  --gold-pale: #F5EDD8;
+  --red: #C0392B;
+  --muted: #6B6560;
+  --border: #D8D0C2;
+  --white: #FFFFFF;
+  --shadow: 0 4px 24px rgba(13,17,23,0.10);
+  --shadow-lg: 0 8px 40px rgba(13,17,23,0.15);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ===== TOP BAR ===== */
+.topbar {
+  background: var(--ink);
+  padding: 0 32px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  border-bottom: 1px solid rgba(184,146,74,0.3);
+}
+.topbar-logo {
+  font-family: 'Shippori Mincho', serif;
+  font-size: 15px;
+  color: var(--gold-light);
+  letter-spacing: .06em;
+}
+.topbar-divider { width: 1px; height: 20px; background: rgba(255,255,255,0.15); }
+.topbar-title { font-size: 13px; color: rgba(255,255,255,0.6); font-weight: 400; }
+.topbar-badge {
+  margin-left: auto;
+  font-size: 10px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(184,146,74,0.5);
+  color: var(--gold-light);
+  letter-spacing: .06em;
+}
+
+/* ===== LAYOUT ===== */
+.layout {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  height: calc(100vh - 56px);
+}
+
+/* ===== LEFT PANEL ===== */
+.left {
+  background: var(--white);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.search-area {
+  padding: 24px 24px 20px;
+  background: var(--ink);
+  flex-shrink: 0;
+}
+
+.search-eyebrow {
+  font-size: 10px;
+  letter-spacing: .18em;
+  color: var(--gold-light);
+  margin-bottom: 16px;
+  text-transform: uppercase;
+}
+
+.search-title {
+  font-family: 'Shippori Mincho', serif;
+  font-size: 20px;
+  color: var(--white);
+  line-height: 1.4;
+  margin-bottom: 20px;
+}
+
+.form-group { margin-bottom: 12px; }
+.form-group label {
+  display: block;
+  font-size: 10px;
+  letter-spacing: .1em;
+  color: rgba(255,255,255,0.5);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+.form-group input, .form-group select {
+  width: 100%;
+  padding: 11px 14px;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: 'DM Sans', sans-serif;
+  color: var(--white);
+  outline: none;
+  transition: border-color .2s, background .2s;
+}
+.form-group input::placeholder { color: rgba(255,255,255,0.3); }
+.form-group input:focus, .form-group select:focus {
+  border-color: var(--gold);
+  background: rgba(255,255,255,0.1);
+}
+.form-group select option { background: #1a1a2e; color: #fff; }
+
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+.search-btn {
+  width: 100%;
+  padding: 13px;
+  background: var(--gold);
+  color: var(--ink);
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  margin-top: 16px;
+  letter-spacing: .04em;
+  transition: background .2s, transform .1s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.search-btn:hover { background: var(--gold-light); }
+.search-btn:active { transform: scale(.98); }
+.search-btn:disabled { background: rgba(184,146,74,0.3); color: rgba(13,17,23,0.4); cursor: not-allowed; }
+
+/* ===== RESULTS ===== */
+.results-header {
+  padding: 16px 24px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--cream);
+}
+.results-count {
+  font-family: 'Shippori Mincho', serif;
+  font-size: 14px;
+  color: var(--ink);
+}
+.results-count span { color: var(--gold); font-size: 22px; margin-right: 4px; }
+.sort-select {
+  font-size: 12px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--white);
+  color: var(--muted);
+  font-family: 'DM Sans', sans-serif;
+  outline: none;
+  cursor: pointer;
+}
+
+.results-list {
+  overflow-y: auto;
+  flex: 1;
+  padding: 12px;
+}
+.results-list::-webkit-scrollbar { width: 4px; }
+.results-list::-webkit-scrollbar-track { background: transparent; }
+.results-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.property-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: border-color .2s, box-shadow .2s, transform .15s;
+  position: relative;
+  overflow: hidden;
+}
+.property-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: transparent;
+  transition: background .2s;
+}
+.property-card:hover {
+  border-color: var(--gold-light);
+  box-shadow: var(--shadow);
+  transform: translateX(2px);
+}
+.property-card:hover::before { background: var(--gold); }
+.property-card.active {
+  border-color: var(--gold);
+  background: var(--gold-pale);
+}
+.property-card.active::before { background: var(--gold); }
+
+.card-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 8px; }
+.card-num {
+  width: 22px; height: 22px;
+  background: var(--ink);
+  color: var(--white);
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  margin-right: 8px;
+}
+.card-type-badge {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-weight: 600;
+  letter-spacing: .04em;
+}
+.badge-mansion { background: #E8F0FB; color: #1a4fa0; }
+.badge-house { background: #EDF7ED; color: #1a5e20; }
+.badge-land { background: #FFF3E0; color: #8a4500; }
+
+.card-name {
+  font-family: 'Shippori Mincho', serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+  flex: 1;
+  margin-right: 8px;
+  line-height: 1.4;
+}
+.card-price {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--red);
+  white-space: nowrap;
+}
+.card-price-unit { font-size: 11px; color: var(--muted); font-weight: 400; }
+
+.card-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+.card-meta span { display: flex; align-items: center; gap: 3px; }
+
+.card-tanka {
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--cream);
+  border-radius: 3px;
+  padding: 3px 8px;
+  display: inline-block;
+}
+
+.card-dist {
+  font-size: 11px;
+  color: var(--gold);
+  font-weight: 600;
+  background: var(--gold-pale);
+  border-radius: 3px;
+  padding: 3px 8px;
+  display: inline-block;
+  margin-left: 6px;
+}
+.send-satei-btn {
+  margin-top: 10px;
+  width: 100%;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'DM Sans', sans-serif;
+  background: var(--ink);
+  color: var(--gold-light);
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: background .15s;
+}
+.send-satei-btn:hover { background: #2a3a52; }
+.send-satei-btn.sent { background: #1a5e20; color: #a5d6a7; cursor: default; }
+
+.toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: #1a5e20;
+  color: #fff;
+  padding: 10px 22px;
+  border-radius: 24px;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+  opacity: 0;
+  transition: opacity .3s, transform .3s;
+  z-index: 9999;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ===== EMPTY / LOADING ===== */
+.placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--muted);
+  text-align: center;
+  padding: 40px;
+}
+.placeholder-icon { font-size: 48px; margin-bottom: 16px; opacity: .3; }
+.placeholder h3 { font-family: 'Shippori Mincho', serif; font-size: 16px; margin-bottom: 8px; color: var(--ink); opacity: .5; }
+.placeholder p { font-size: 12px; line-height: 1.7; opacity: .6; }
+
+.loading-dots {
+  display: flex; gap: 6px; justify-content: center; margin-top: 20px;
+}
+.loading-dots span {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--gold);
+  animation: bounce 1.2s infinite;
+}
+.loading-dots span:nth-child(2) { animation-delay: .2s; }
+.loading-dots span:nth-child(3) { animation-delay: .4s; }
+@keyframes bounce {
+  0%, 80%, 100% { transform: scale(.6); opacity: .4; }
+  40% { transform: scale(1); opacity: 1; }
+}
+
+/* ===== MAP ===== */
+.map-container { position: relative; }
+#map { width: 100%; height: 100%; }
+
+.map-overlay {
+  position: absolute;
+  top: 16px; right: 16px;
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.map-info-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  min-width: 240px;
+  box-shadow: var(--shadow-lg);
+  display: none;
+  animation: slideIn .2s ease;
+}
+.map-info-card.show { display: block; }
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.map-info-name {
+  font-family: 'Shippori Mincho', serif;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--ink);
+}
+.map-info-price { font-size: 20px; font-weight: 700; color: var(--red); margin-bottom: 8px; }
+.map-info-meta { font-size: 12px; color: var(--muted); line-height: 1.8; }
+.map-info-close {
+  position: absolute; top: 10px; right: 12px;
+  background: none; border: none; cursor: pointer;
+  font-size: 16px; color: var(--muted); line-height: 1;
+}
+
+.stat-strip {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  background: rgba(13,17,23,0.88);
+  backdrop-filter: blur(8px);
+  padding: 12px 24px;
+  display: none;
+  gap: 32px;
+  z-index: 400;
+  border-top: 1px solid rgba(184,146,74,0.3);
+}
+.stat-strip.show { display: flex; }
+.stat-item { text-align: center; }
+.stat-label { font-size: 10px; letter-spacing: .1em; color: rgba(255,255,255,0.4); text-transform: uppercase; margin-bottom: 4px; }
+.stat-val { font-size: 18px; font-weight: 600; color: var(--gold-light); }
+.stat-unit { font-size: 10px; color: rgba(255,255,255,0.4); margin-left: 3px; }
+
+/* Leaflet custom marker */
+.custom-marker {
+  background: var(--ink);
+  color: var(--white);
+  border: 2px solid var(--gold);
+  border-radius: 50% 50% 50% 0;
+  width: 32px; height: 32px;
+  transform: rotate(-45deg);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  cursor: pointer;
+  transition: transform .2s, background .2s;
+}
+.custom-marker span { transform: rotate(45deg); }
+.custom-marker.active { background: var(--gold); color: var(--ink); }
+
+@media (max-width: 768px) {
+  .layout { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  .left { max-height: 55vh; }
+  .map-container { height: 45vh; }
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-logo">アソシア株式会社</div>
+  <div class="topbar-divider"></div>
+  <div class="topbar-title">近隣販売事例マップ</div>
+  <div class="topbar-badge">BETA</div>
+</div>
+
+<div class="layout">
+
+  <!-- ===== LEFT PANEL ===== -->
+  <div class="left">
+    <div class="search-area">
+      <div class="search-eyebrow">Property Search</div>
+      <div class="search-title">近隣の販売事例を<br>地図で確認する</div>
+
+      <div class="form-group">
+        <label>住所・エリア</label>
+        <input type="text" id="addr" placeholder="例：大阪市北区梅田1丁目" value="">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>物件タイプ</label>
+          <select id="bukken-type">
+            <option value="all">すべて</option>
+            <option value="mansion">マンション</option>
+            <option value="house">一戸建て</option>
+            <option value="land">土地</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>検索半径</label>
+          <select id="radius">
+            <option value="500">500m</option>
+            <option value="1000" selected>1km</option>
+            <option value="2000">2km</option>
+            <option value="3000">3km</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>価格帯（下限）</label>
+          <input type="number" id="price-min" placeholder="万円" min="0">
+        </div>
+        <div class="form-group">
+          <label>価格帯（上限）</label>
+          <input type="number" id="price-max" placeholder="万円" min="0">
+        </div>
+      </div>
+
+      <button class="search-btn" id="search-btn" onclick="doSearch()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        近隣事例を検索する
+      </button>
+    </div>
+
+    <div class="results-header" id="results-header" style="display:none">
+      <div class="results-count"><span id="count-num">0</span>件の事例が見つかりました</div>
+      <select class="sort-select" id="sort-select" onchange="sortResults()">
+        <option value="dist">距離順</option>
+        <option value="price-asc">価格（安い順）</option>
+        <option value="price-desc">価格（高い順）</option>
+        <option value="tanka">㎡単価順</option>
+      </select>
+    </div>
+
+    <div class="results-list" id="results-list">
+      <div class="placeholder">
+        <div class="placeholder-icon">🗾</div>
+        <h3>住所を入力して検索</h3>
+        <p>住所と物件タイプを指定すると<br>近隣の販売事例が地図とリストで<br>表示されます</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MAP ===== -->
+  <div class="map-container">
+    <div id="map"></div>
+
+    <div class="map-overlay">
+      <div class="map-info-card" id="map-info-card">
+        <button class="map-info-close" onclick="closeMapInfo()">✕</button>
+        <div class="map-info-name" id="mi-name"></div>
+        <div class="map-info-price" id="mi-price"></div>
+        <div class="map-info-meta" id="mi-meta"></div>
+        <button class="send-satei-btn" id="mi-send-btn" style="margin-top:10px">査定エンジンに追加 →</button>
+      </div>
+    </div>
+
+    <div class="stat-strip" id="stat-strip">
+      <div class="stat-item">
+        <div class="stat-label">平均価格</div>
+        <div class="stat-val" id="st-avg-price">—<span class="stat-unit">万円</span></div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">最安値</div>
+        <div class="stat-val" id="st-min-price">—<span class="stat-unit">万円</span></div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">最高値</div>
+        <div class="stat-val" id="st-max-price">—<span class="stat-unit">万円</span></div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">平均㎡単価</div>
+        <div class="stat-val" id="st-avg-tanka">—<span class="stat-unit">万/㎡</span></div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">件数</div>
+        <div class="stat-val" id="st-count">—<span class="stat-unit">件</span></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ===== MAP INIT =====
+const map = L.map('map', { zoomControl: true }).setView([34.6937, 135.5023], 14);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  attribution: '© OpenStreetMap contributors © CARTO',
+  subdomains: 'abcd', maxZoom: 19
+}).addTo(map);
+
+let markers = [];
+let circleLayer = null;
+let centerMarker = null;
+let allProperties = [];
+let activeIdx = null;
+
+// ===== GEOCODE =====
+async function geocode(addr) {
+  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}&limit=1&accept-language=ja`;
+  const res = await fetch(url, { headers: { 'User-Agent': 'AssociaPropertySearch/1.0' } });
+  const data = await res.json();
+  if (!data.length) throw new Error('住所が見つかりませんでした');
+  return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), display: data[0].display_name };
+}
+
+// ===== DISTANCE =====
+function calcDist(lat1, lng1, lat2, lng2) {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+// ===== GENERATE MOCK PROPERTIES =====
+function generateProperties(centerLat, centerLng, type, radius) {
+  const types = type === 'all' ? ['mansion','house','land'] : [type];
+  const typeNames = { mansion: 'マンション', house: '一戸建て', land: '土地' };
+  const areas = ['梅田','北区','天満','中崎町','扇町','天神橋','南森町','西天満','堂島','福島','野田','玉川'];
+  const buildings = ['グランドメゾン','プレミスト','ブランズ','サンクレイドル','ライオンズ','パークホームズ','エスリード','クレアホームズ'];
+
+  const count = Math.floor(Math.random() * 8) + 8;
+  const props = [];
+
+  for (let i = 0; i < count; i++) {
+    const t = types[Math.floor(Math.random() * types.length)];
+    const angle = Math.random() * 2 * Math.PI;
+    const dist = Math.random() * radius * 0.9;
+    const lat = centerLat + (dist * Math.cos(angle)) / 111000;
+    const lng = centerLng + (dist * Math.sin(angle)) / (111000 * Math.cos(centerLat * Math.PI / 180));
+
+    let price, area, age, name;
+    const area_name = areas[Math.floor(Math.random() * areas.length)];
+
+    if (t === 'mansion') {
+      area = Math.round((40 + Math.random() * 80) * 10) / 10;
+      price = Math.round((area * (50 + Math.random() * 100)) / 10) * 10;
+      age = Math.floor(Math.random() * 30);
+      const building = buildings[Math.floor(Math.random() * buildings.length)];
+      name = `${building}${area_name} ${Math.floor(Math.random() * 20 + 1)}階`;
+    } else if (t === 'house') {
+      area = Math.round((80 + Math.random() * 120) * 10) / 10;
+      price = Math.round((2000 + Math.random() * 5000) / 50) * 50;
+      age = Math.floor(Math.random() * 35);
+      name = `${area_name}${Math.floor(Math.random() * 5 + 1)}丁目 一戸建て`;
+    } else {
+      area = Math.round((60 + Math.random() * 200) * 10) / 10;
+      price = Math.round((area * (30 + Math.random() * 80)) / 10) * 10;
+      age = null;
+      name = `${area_name}${Math.floor(Math.random() * 5 + 1)}丁目 ${Math.floor(area)}㎡`;
+    }
+
+    const tanka = Math.round(price / area * 10) / 10;
+    const actualDist = calcDist(centerLat, centerLng, lat, lng);
+
+    props.push({ id: i, name, type: t, typeName: typeNames[t], price, area, age, tanka, lat, lng, dist: Math.round(actualDist) });
+  }
+
+  return props.sort((a, b) => a.dist - b.dist);
+}
+
+// ===== CLEAR MAP =====
+function clearMap() {
+  markers.forEach(m => map.removeLayer(m));
+  markers = [];
+  if (circleLayer) { map.removeLayer(circleLayer); circleLayer = null; }
+  if (centerMarker) { map.removeLayer(centerMarker); centerMarker = null; }
+}
+
+// ===== RENDER MARKERS =====
+function renderMarkers(props, centerLat, centerLng) {
+  const centerIcon = L.divIcon({
+    html: `<div style="width:14px;height:14px;background:#0D1117;border:3px solid #B8924A;border-radius:50%;box-shadow:0 0 0 4px rgba(184,146,74,0.2)"></div>`,
+    iconSize: [14,14], iconAnchor: [7,7], className: ''
+  });
+  centerMarker = L.marker([centerLat, centerLng], { icon: centerIcon }).addTo(map);
+  centerMarker.bindPopup('<strong>対象地点</strong>').openPopup();
+
+  props.forEach((p, i) => {
+    const colorMap = { mansion: '#1a4fa0', house: '#1a5e20', land: '#8a4500' };
+    const icon = L.divIcon({
+      html: `<div style="
+        background:${colorMap[p.type]};color:#fff;
+        border:2px solid #fff;border-radius:50% 50% 50% 0;
+        width:34px;height:34px;transform:rotate(-45deg);
+        display:flex;align-items:center;justify-content:center;
+        font-size:12px;font-weight:700;
+        box-shadow:0 3px 10px rgba(0,0,0,0.25);
+        cursor:pointer;font-family:'DM Sans',sans-serif;
+      "><span style="transform:rotate(45deg)">${i+1}</span></div>`,
+      iconSize: [34,34], iconAnchor: [17,34], popupAnchor: [0,-36], className: ''
+    });
+
+    const marker = L.marker([p.lat, p.lng], { icon }).addTo(map);
+    marker.on('click', () => selectProperty(i));
+    markers.push(marker);
+  });
+}
+
+// ===== SELECT PROPERTY =====
+function selectProperty(idx) {
+  activeIdx = idx;
+  const p = allProperties[idx];
+
+  // Update cards
+  document.querySelectorAll('.property-card').forEach((c, i) => {
+    c.classList.toggle('active', i === idx);
+  });
+
+  // Scroll card into view
+  const card = document.querySelector(`.property-card[data-idx="${idx}"]`);
+  if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  // Map info
+  document.getElementById('mi-name').textContent = p.name;
+  document.getElementById('mi-price').textContent = `${p.price.toLocaleString()}万円`;
+  document.getElementById('mi-meta').innerHTML =
+    `種別：${p.typeName}　面積：${p.area}㎡<br>` +
+    (p.age !== null ? `築年数：${p.age}年　` : '') +
+    `㎡単価：${p.tanka}万円<br>対象地点から：${p.dist}m`;
+  document.getElementById('mi-send-btn').onclick = () => sendToSatei(idx);
+  document.getElementById('mi-send-btn').textContent = '査定エンジンに追加 →';
+  document.getElementById('mi-send-btn').classList.remove('sent');
+  document.getElementById('map-info-card').classList.add('show');
+
+  // Pan map
+  map.panTo([p.lat, p.lng], { animate: true, duration: .5 });
+}
+
+function closeMapInfo() {
+  document.getElementById('map-info-card').classList.remove('show');
+  activeIdx = null;
+  document.querySelectorAll('.property-card').forEach(c => c.classList.remove('active'));
+}
+
+// ===== RENDER LIST =====
+function renderList(props) {
+  const list = document.getElementById('results-list');
+  if (!props.length) {
+    list.innerHTML = `<div class="placeholder"><div class="placeholder-icon">🔍</div><h3>条件に合う物件が見つかりません</h3><p>検索条件を変更してみてください</p></div>`;
+    return;
+  }
+
+  document.getElementById('count-num').textContent = props.length;
+  document.getElementById('results-header').style.display = 'flex';
+
+  const badgeClass = { mansion: 'badge-mansion', house: 'badge-house', land: 'badge-land' };
+
+  list.innerHTML = props.map((p, i) => `
+    <div class="property-card" data-idx="${i}" onclick="selectProperty(${i})">
+      <div class="card-top">
+        <div class="card-num">${i+1}</div>
+        <div class="card-name">${p.name}</div>
+        <div>
+          <div class="card-price">${p.price.toLocaleString()}<span class="card-price-unit">万円</span></div>
+        </div>
+      </div>
+      <div class="card-meta">
+        <span><span class="card-type-badge ${badgeClass[p.type]}">${p.typeName}</span></span>
+        <span>📐 ${p.area}㎡</span>
+        ${p.age !== null ? `<span>🏗 築${p.age}年</span>` : ''}
+      </div>
+      <div>
+        <span class="card-tanka">㎡単価 ${p.tanka}万円</span>
+        <span class="card-dist">📍 ${p.dist}m</span>
+      </div>
+      <button class="send-satei-btn" id="send-btn-${i}" onclick="event.stopPropagation(); sendToSatei(${i})">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        査定エンジンに追加
+      </button>
+    </div>
+  `).join('');
+}
+
+// ===== STATS =====
+function renderStats(props) {
+  if (!props.length) return;
+  const prices = props.map(p => p.price);
+  const tankas = props.map(p => p.tanka);
+  const avg = Math.round(prices.reduce((a,b)=>a+b,0)/prices.length);
+  const avgTanka = Math.round(tankas.reduce((a,b)=>a+b,0)/tankas.length * 10) / 10;
+  document.getElementById('st-avg-price').innerHTML = `${avg.toLocaleString()}<span class="stat-unit">万円</span>`;
+  document.getElementById('st-min-price').innerHTML = `${Math.min(...prices).toLocaleString()}<span class="stat-unit">万円</span>`;
+  document.getElementById('st-max-price').innerHTML = `${Math.max(...prices).toLocaleString()}<span class="stat-unit">万円</span>`;
+  document.getElementById('st-avg-tanka').innerHTML = `${avgTanka}<span class="stat-unit">万/㎡</span>`;
+  document.getElementById('st-count').innerHTML = `${props.length}<span class="stat-unit">件</span>`;
+  document.getElementById('stat-strip').classList.add('show');
+}
+
+// ===== SORT =====
+function sortResults() {
+  const sort = document.getElementById('sort-select').value;
+  let sorted = [...allProperties];
+  if (sort === 'price-asc') sorted.sort((a,b) => a.price - b.price);
+  else if (sort === 'price-desc') sorted.sort((a,b) => b.price - a.price);
+  else if (sort === 'tanka') sorted.sort((a,b) => b.tanka - a.tanka);
+  else sorted.sort((a,b) => a.dist - b.dist);
+  renderList(sorted);
+}
+
+// ===== FILTER BY PRICE =====
+function filterByPrice(props) {
+  const min = parseFloat(document.getElementById('price-min').value) || 0;
+  const max = parseFloat(document.getElementById('price-max').value) || Infinity;
+  return props.filter(p => p.price >= min && p.price <= max);
+}
+
+// ===== MAIN SEARCH =====
+async function doSearch() {
+  const addr = document.getElementById('addr').value.trim();
+  if (!addr) { alert('住所を入力してください'); return; }
+
+  const btn = document.getElementById('search-btn');
+  btn.disabled = true;
+  btn.innerHTML = `<div class="loading-dots"><span></span><span></span><span></span></div>`;
+
+  const list = document.getElementById('results-list');
+  list.innerHTML = `<div class="placeholder"><div class="placeholder-icon">🔍</div><h3>検索中...</h3><div class="loading-dots"><span></span><span></span><span></span></div></div>`;
+  document.getElementById('results-header').style.display = 'none';
+  document.getElementById('stat-strip').classList.remove('show');
+  closeMapInfo();
+  clearMap();
+
+  try {
+    const { lat, lng } = await geocode(addr);
+    const radius = parseInt(document.getElementById('radius').value);
+    const type = document.getElementById('bukken-type').value;
+
+    map.setView([lat, lng], radius <= 500 ? 16 : radius <= 1000 ? 15 : radius <= 2000 ? 14 : 13);
+
+    // 検索円
+    circleLayer = L.circle([lat, lng], {
+      radius,
+      color: '#B8924A',
+      fillColor: '#B8924A',
+      fillOpacity: 0.06,
+      weight: 1.5,
+      dashArray: '6 4'
+    }).addTo(map);
+
+    await new Promise(r => setTimeout(r, 800));
+
+    let props = generateProperties(lat, lng, type, radius);
+    props = filterByPrice(props);
+    allProperties = props;
+
+    renderMarkers(props, lat, lng);
+    renderList(props);
+    renderStats(props);
+
+  } catch (e) {
+    list.innerHTML = `<div class="placeholder"><div class="placeholder-icon">⚠️</div><h3>エラー</h3><p>${e.message}</p></div>`;
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> 近隣事例を検索する`;
+}
+
+// Enterキー対応
+document.getElementById('addr').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doSearch();
+});
+
+// ===== 査定エンジン連携 =====
+function sendToSatei(idx) {
+  const p = allProperties[idx];
+  // localStorage経由で渡す
+  const existing = JSON.parse(localStorage.getItem('satei_listings') || '[]');
+  const already = existing.find(e => e.name === p.name && e.price === p.price);
+  if (already) { showToast('すでに追加済みです'); return; }
+  existing.push({ name: p.name, price: p.price, area: p.area, age: p.age || '' });
+  localStorage.setItem('satei_listings', JSON.stringify(existing));
+
+  // ボタンを送信済みに
+  const listBtn = document.getElementById(`send-btn-${idx}`);
+  if (listBtn) { listBtn.textContent = '✓ 追加済み'; listBtn.classList.add('sent'); listBtn.disabled = true; }
+  const miBtn = document.getElementById('mi-send-btn');
+  if (miBtn) { miBtn.textContent = '✓ 追加済み'; miBtn.classList.add('sent'); miBtn.disabled = true; }
+
+  showToast(`「${p.name}」を査定エンジンに追加しました`);
+}
+
+function showToast(msg) {
+  let t = document.getElementById('toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'toast';
+    t.className = 'toast';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+</script>
+</body>
+</html>

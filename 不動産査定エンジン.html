@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>不動産査定エンジン｜アソシア株式会社</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.10.0/dist/tabler-icons.min.css">
+<style>
+  :root {
+    --navy: #1F3864;
+    --blue: #2E75B6;
+    --green: #375623;
+    --light: #F7F4EE;
+    --border: #D4CEC4;
+    --muted: #7A7570;
+    --white: #FFFFFF;
+    --success-bg: #EAF3DE;
+    --success-fg: #27500A;
+    --info-bg: #E6F1FB;
+    --info-fg: #0C447C;
+    --warn-bg: #FAEEDA;
+    --warn-fg: #633806;
+    --red: #C00000;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Noto Sans JP', 'Hiragino Sans', Arial, sans-serif; background: var(--light); color: #1a1714; font-size: 13px; min-height: 100vh; }
+
+  .top-bar { background: var(--navy); color: #fff; padding: 12px 24px; display: flex; align-items: center; gap: 12px; }
+  .top-bar h1 { font-size: 16px; font-weight: 600; }
+  .top-bar span { font-size: 11px; opacity: .7; margin-left: auto; }
+
+  .container { max-width: 860px; margin: 0 auto; padding: 20px 16px 60px; }
+
+  .card { background: var(--white); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; margin-bottom: 14px; }
+  .sec-label { font-size: 11px; font-weight: 700; letter-spacing: .1em; color: var(--blue); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .sec-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  .toggle { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin-bottom: 16px; }
+  .toggle-btn { flex: 1; padding: 10px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; background: transparent; color: var(--muted); transition: all .15s; }
+  .toggle-btn.active { background: var(--navy); color: #fff; }
+
+  .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .g4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; }
+  .g1 { display: grid; grid-template-columns: 1fr; gap: 10px; }
+
+  .field { margin-bottom: 0; }
+  .field label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 4px; font-weight: 600; }
+  .field input, .field select, .field textarea {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 5px;
+    font-size: 13px; font-family: inherit; background: var(--light); color: #1a1714; outline: none;
+    transition: border-color .15s;
+  }
+  .field input:focus, .field select:focus { border-color: var(--blue); background: #fff; }
+  .field textarea { resize: vertical; min-height: 60px; line-height: 1.6; }
+
+  .case-header { display: grid; grid-template-columns: 2fr 1fr 1fr 0.8fr 1fr 28px; gap: 5px; margin-bottom: 4px; }
+  .case-header span { font-size: 10px; color: var(--muted); font-weight: 600; }
+  .case-row { display: grid; grid-template-columns: 2fr 1fr 1fr 0.8fr 1fr 28px; gap: 5px; align-items: center; margin-bottom: 5px; }
+  .case-row input { padding: 7px 8px; font-size: 12px; border: 1px solid var(--border); border-radius: 5px; background: var(--light); outline: none; width: 100%; font-family: inherit; }
+  .case-row input:focus { border-color: var(--blue); background: #fff; }
+  .tanka-tag { font-size: 12px; font-weight: 600; color: var(--info-fg); background: var(--info-bg); border-radius: 5px; padding: 7px 4px; text-align: center; border: 1px solid #B5D4F4; white-space: nowrap; }
+  .del-btn { width: 26px; height: 34px; border: 1px solid var(--border); border-radius: 5px; background: transparent; cursor: pointer; color: var(--muted); font-size: 14px; display: flex; align-items: center; justify-content: center; }
+  .del-btn:hover { background: #FEE2E2; border-color: #FCA5A5; color: #DC2626; }
+  .add-row-btn { padding: 6px 14px; border: 1px solid var(--border); border-radius: 5px; background: transparent; cursor: pointer; font-size: 12px; color: var(--muted); font-family: inherit; margin-top: 4px; }
+  .add-row-btn:hover { background: var(--light); border-color: var(--blue); color: var(--blue); }
+
+  .adj-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .adj-row label { width: 120px; font-size: 12px; color: var(--muted); font-weight: 600; flex-shrink: 0; }
+  .adj-row input[type=range] { flex: 1; accent-color: var(--blue); }
+  .adj-val { width: 48px; text-align: right; font-size: 13px; font-weight: 700; color: #1a1714; }
+  .adj-note { font-size: 10px; color: var(--muted); }
+
+  .result-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .metric { background: var(--light); border-radius: 6px; padding: 14px 10px; text-align: center; border: 1px solid var(--border); }
+  .metric-label { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+  .metric-val { font-size: 20px; font-weight: 700; color: #1a1714; }
+  .metric-sub { font-size: 10px; color: var(--muted); margin-top: 4px; }
+  .metric.highlight { border: 2px solid var(--blue); background: var(--info-bg); }
+  .metric.highlight .metric-val { color: var(--red); font-size: 26px; }
+  .metric.highlight .metric-label { color: var(--info-fg); font-weight: 700; }
+
+  .calc-btn { width: 100%; padding: 14px; font-size: 15px; font-weight: 700; cursor: pointer; background: var(--navy); color: #fff; border: none; border-radius: 6px; margin-bottom: 8px; font-family: inherit; transition: background .15s; }
+  .calc-btn:hover { background: var(--blue); }
+  .search-btn { width: 100%; padding: 10px; font-size: 13px; cursor: pointer; border: 1px solid var(--blue); border-radius: 6px; background: var(--info-bg); color: var(--info-fg); font-family: inherit; margin-bottom: 10px; font-weight: 600; }
+  .search-btn:hover { background: #B5D4F4; }
+
+  .divider { height: 1px; background: var(--border); margin: 14px 0; }
+
+  .detail-box { font-size: 12px; color: var(--muted); line-height: 1.9; background: var(--light); border-radius: 6px; padding: 12px 14px; white-space: pre-line; border: 1px solid var(--border); }
+
+  .tag { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 20px; font-weight: 600; margin-left: 6px; }
+  .tag-blue { background: var(--info-bg); color: var(--info-fg); border: 1px solid #85B7EB; }
+  .tag-amber { background: var(--warn-bg); color: var(--warn-fg); border: 1px solid #EF9F27; }
+  .tag-green { background: var(--success-bg); color: var(--success-fg); border: 1px solid #97C459; }
+
+  .result-section { display: none; }
+  .result-section.show { display: block; }
+
+  .footer-note { font-size: 11px; color: var(--muted); text-align: center; margin-top: 8px; }
+
+  @media (max-width: 600px) {
+    .g2, .g3, .g4 { grid-template-columns: 1fr; }
+    .result-grid { grid-template-columns: 1fr; }
+    .case-header, .case-row { grid-template-columns: 1.5fr 0.8fr 0.8fr 0.7fr 0.9fr 26px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <i class="ti ti-building-estate" style="font-size:20px"></i>
+  <h1>不動産査定エンジン</h1>
+  <span>アソシア株式会社｜成約事例＋販売中物件から自動算出</span>
+</div>
+
+<div class="container">
+
+  <div class="toggle">
+    <button class="toggle-btn active" id="btn-m" onclick="switchType('m')">
+      <i class="ti ti-building"></i> マンション
+    </button>
+    <button class="toggle-btn" id="btn-h" onclick="switchType('h')">
+      <i class="ti ti-home"></i> 一戸建て
+    </button>
+  </div>
+
+  <!-- 対象物件 -->
+  <div class="card">
+    <div class="sec-label">対象物件情報</div>
+    <div class="g2" style="margin-bottom:10px">
+      <div class="field"><label>所在地（市区町村まで）</label><input id="addr" placeholder="例：大阪市北区"></div>
+      <div class="field"><label>最寄り駅・徒歩分</label><input id="eki" placeholder="例：南森町駅 徒歩5分"></div>
+    </div>
+    <div class="g4" style="margin-bottom:10px">
+      <div class="field"><label>専有面積 (㎡)</label><input type="number" id="area" placeholder="75.5" step="0.1"></div>
+      <div class="field" id="f-floor"><label>所在階 / 総階数</label><input id="floor" placeholder="8F / 15F"></div>
+      <div class="field" id="f-land" style="display:none"><label>土地面積 (㎡)</label><input type="number" id="land" placeholder="132.5" step="0.1"></div>
+      <div class="field"><label>築年数（年）</label><input type="number" id="age" placeholder="15" min="0"></div>
+      <div class="field"><label>間取り</label><input id="madori" placeholder="3LDK"></div>
+    </div>
+    <div class="g3">
+      <div class="field"><label>向き</label>
+        <select id="muki">
+          <option value="">未選択</option>
+          <option value="南">南向き ＋3%</option>
+          <option value="南東">南東向き ＋2%</option>
+          <option value="南西">南西向き ＋2%</option>
+          <option value="東">東向き ＋1%</option>
+          <option value="西">西向き ±0%</option>
+          <option value="北東">北東向き −1%</option>
+          <option value="北西">北西向き −1%</option>
+          <option value="北">北向き −3%</option>
+        </select>
+      </div>
+      <div class="field"><label>リフォーム状況</label>
+        <select id="reform">
+          <option value="0">未実施</option>
+          <option value="5">一部リフォーム済 ＋5%</option>
+          <option value="10">フルリフォーム済 ＋10%</option>
+          <option value="-3">要リフォーム −3%</option>
+        </select>
+      </div>
+      <div class="field"><label>管理・状態</label>
+        <select id="kanri">
+          <option value="0">普通</option>
+          <option value="3">良好 ＋3%</option>
+          <option value="5">非常に良好 ＋5%</option>
+          <option value="-3">やや難あり −3%</option>
+          <option value="-5">難あり −5%</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- 成約事例 -->
+  <div class="card">
+    <div class="sec-label">成約事例（近畿レインズ等から入力）<span class="tag tag-blue">手入力</span></div>
+    <div class="case-header">
+      <span>所在地・物件名</span><span>成約価格(万)</span><span>面積(㎡)</span><span>築年</span><span>㎡単価</span><span></span>
+    </div>
+    <div id="cases"></div>
+    <button class="add-row-btn" onclick="addCase()"><i class="ti ti-plus"></i> 事例を追加</button>
+  </div>
+
+  <!-- 販売中物件 -->
+  <div class="card">
+    <div class="sec-label">販売中物件（SUUMO・アットホーム等）<span class="tag tag-amber">参考データ</span></div>
+
+    <!-- マップ連携バナー -->
+    <div id="import-banner" style="display:none;background:#E8F5E9;border:1px solid #A5D6A7;border-radius:6px;padding:10px 14px;font-size:13px;font-weight:600;color:#1a5e20;margin-bottom:12px;transition:opacity .5s;"></div>
+
+    <!-- マップからインポートボタン -->
+    <button id="import-map-btn" onclick="loadFromMap()" style="
+      width:100%;padding:10px 14px;margin-bottom:12px;
+      background:#F0F7FF;border:1px dashed #90CAF9;border-radius:6px;
+      font-size:13px;font-weight:600;color:#1565C0;
+      cursor:pointer;font-family:inherit;
+      display:flex;align-items:center;justify-content:center;gap:8px;
+      transition:background .15s;
+    " onmouseover="this.style.background='#E3F2FD'" onmouseout="this.style.background='#F0F7FF'">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      近隣販売事例マップから取り込む
+    </button>
+
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.7;">
+      ※ 販売中物件は成約率を考慮して自動的に<strong>▲5%</strong>補正して計算します。
+    </div>
+    <div class="case-header">
+      <span>物件名・所在地</span><span>販売価格(万)</span><span>面積(㎡)</span><span>築年</span><span>㎡単価</span><span></span>
+    </div>
+    <div id="listings"></div>
+    <button class="add-row-btn" onclick="addListing()"><i class="ti ti-plus"></i> 物件を追加</button>
+  </div>
+
+  <!-- 補正 -->
+  <div class="card">
+    <div class="sec-label">追加補正（スライダー）</div>
+    <div class="adj-row">
+      <label><i class="ti ti-building-skyscraper" style="font-size:14px;margin-right:4px"></i>階数補正</label>
+      <input type="range" id="adj-floor" min="-5" max="8" value="0" step="1" oninput="updateAdj()">
+      <span class="adj-val" id="adj-floor-val">±0%</span>
+      <span class="adj-note">高層階は＋、低層は−</span>
+    </div>
+    <div class="adj-row">
+      <label><i class="ti ti-map-pin" style="font-size:14px;margin-right:4px"></i>立地・利便性</label>
+      <input type="range" id="adj-loc" min="-5" max="5" value="0" step="1" oninput="updateAdj()">
+      <span class="adj-val" id="adj-loc-val">±0%</span>
+      <span class="adj-note">駅近・学区等</span>
+    </div>
+    <div class="adj-row">
+      <label><i class="ti ti-eye" style="font-size:14px;margin-right:4px"></i>眺望・環境</label>
+      <input type="range" id="adj-view" min="-3" max="5" value="0" step="1" oninput="updateAdj()">
+      <span class="adj-val" id="adj-view-val">±0%</span>
+      <span class="adj-note">眺望良好・角部屋等</span>
+    </div>
+  </div>
+
+  <button class="calc-btn" onclick="calc()">
+    <i class="ti ti-calculator"></i>　査定額を算出する
+  </button>
+
+  <!-- 結果 -->
+  <div class="result-section" id="result-section">
+    <div class="card">
+      <div class="sec-label">算出結果 <span class="tag tag-green">自動計算</span></div>
+      <div class="result-grid">
+        <div class="metric">
+          <div class="metric-label">成約事例 平均㎡単価</div>
+          <div class="metric-val" id="r-case">—</div>
+          <div class="metric-sub">万円/㎡</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">販売中物件 補正後㎡単価</div>
+          <div class="metric-val" id="r-list">—</div>
+          <div class="metric-sub">万円/㎡（▲5%補正済）</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">加重平均㎡単価</div>
+          <div class="metric-val" id="r-avg">—</div>
+          <div class="metric-sub">万円/㎡</div>
+        </div>
+      </div>
+      <div class="result-grid">
+        <div class="metric">
+          <div class="metric-label">補正前査定額</div>
+          <div class="metric-val" id="r-before">—</div>
+          <div class="metric-sub">万円</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">補正率合計</div>
+          <div class="metric-val" id="r-adj-total">—</div>
+          <div class="metric-sub"></div>
+        </div>
+        <div class="metric highlight">
+          <div class="metric-label">査定価格（推奨）</div>
+          <div class="metric-val" id="r-final">—</div>
+          <div class="metric-sub" id="r-range">万円</div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="detail-box" id="r-detail"></div>
+    </div>
+
+    <div class="card">
+      <div class="sec-label">査定コメント</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">補足情報があれば入力すると、より精度の高いコメントが生成されます。</div>
+      <div class="g1" style="margin-bottom:10px">
+        <div class="field"><label>特記事項・アピールポイント</label>
+          <textarea id="biko" placeholder="例：南向き角部屋、フルリフォーム済、小学校徒歩3分、OAPタワー眺望など"></textarea>
+        </div>
+      </div>
+      <button class="calc-btn" style="margin-bottom:0" onclick="copyResult()">
+        <i class="ti ti-copy"></i>　査定結果をコピーしてClaudeに貼り付ける
+      </button>
+      <div class="footer-note" style="margin-top:8px">コピー後、Claudeのチャットに貼り付けて「査定コメントを作って」と送信してください</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let btype = 'm';
+let caseIdx = 0;
+let listIdx = 0;
+
+function switchType(t) {
+  btype = t;
+  document.getElementById('btn-m').classList.toggle('active', t==='m');
+  document.getElementById('btn-h').classList.toggle('active', t==='h');
+  document.getElementById('f-floor').style.display = t==='m' ? '' : 'none';
+  document.getElementById('f-land').style.display = t==='h' ? '' : 'none';
+}
+
+function makeRow(containerId, prefix, idx) {
+  const div = document.createElement('div');
+  div.className = 'case-row';
+  div.id = `${prefix}-row-${idx}`;
+  div.innerHTML = `
+    <input placeholder="所在地・物件名" id="${prefix}_loc_${idx}">
+    <input type="number" placeholder="万円" id="${prefix}_price_${idx}" oninput="updateTanka('${prefix}',${idx})" min="0">
+    <input type="number" placeholder="㎡" id="${prefix}_area_${idx}" oninput="updateTanka('${prefix}',${idx})" step="0.1" min="0">
+    <input type="number" placeholder="年" id="${prefix}_age_${idx}" min="0">
+    <div class="tanka-tag" id="${prefix}_tanka_${idx}">—</div>
+    <button class="del-btn" onclick="delRow('${prefix}-row-${idx}')" aria-label="削除"><i class="ti ti-x"></i></button>
+  `;
+  document.getElementById(containerId).appendChild(div);
+}
+
+function delRow(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+}
+
+function addCase() { makeRow('cases', 'c', caseIdx++); }
+function addListing() { makeRow('listings', 'l', listIdx++); }
+
+function updateTanka(prefix, idx) {
+  const p = parseFloat(document.getElementById(`${prefix}_price_${idx}`)?.value) || 0;
+  const a = parseFloat(document.getElementById(`${prefix}_area_${idx}`)?.value) || 0;
+  const el = document.getElementById(`${prefix}_tanka_${idx}`);
+  if (el) el.textContent = (p > 0 && a > 0) ? (p/a).toFixed(2)+'万/㎡' : '—';
+}
+
+function updateAdj() {
+  ['floor','loc','view'].forEach(k => {
+    const v = parseInt(document.getElementById(`adj-${k}`).value);
+    document.getElementById(`adj-${k}-val`).textContent = (v >= 0 ? '+' : '') + v + '%';
+  });
+}
+
+function getValidRows(prefix, maxIdx) {
+  const rows = [];
+  for (let i = 0; i < maxIdx; i++) {
+    const locEl = document.getElementById(`${prefix}_loc_${i}`);
+    if (!locEl) continue;
+    const p = parseFloat(document.getElementById(`${prefix}_price_${i}`)?.value);
+    const a = parseFloat(document.getElementById(`${prefix}_area_${i}`)?.value);
+    const age = parseFloat(document.getElementById(`${prefix}_age_${i}`)?.value) || 0;
+    const loc = locEl.value;
+    if (p > 0 && a > 0) rows.push({ loc, price: p, area: a, age, tanka: p/a });
+  }
+  return rows;
+}
+
+function calc() {
+  const targetArea = parseFloat(document.getElementById('area').value) || 0;
+  if (targetArea === 0) { alert('対象物件の専有面積を入力してください'); return; }
+
+  const cases = getValidRows('c', caseIdx);
+  const listings = getValidRows('l', listIdx);
+
+  if (cases.length === 0 && listings.length === 0) {
+    alert('成約事例または販売中物件を1件以上入力してください'); return;
+  }
+
+  // 向き補正
+  const mukiMap = {'南':3,'南東':2,'南西':2,'東':1,'西':0,'北東':-1,'北西':-1,'北':-3};
+  const mukiAdj = mukiMap[document.getElementById('muki').value] || 0;
+  const reformAdj = parseInt(document.getElementById('reform').value) || 0;
+  const kanriAdj = parseInt(document.getElementById('kanri').value) || 0;
+  const floorAdj = parseInt(document.getElementById('adj-floor').value) || 0;
+  const locAdj = parseInt(document.getElementById('adj-loc').value) || 0;
+  const viewAdj = parseInt(document.getElementById('adj-view').value) || 0;
+  const totalAdj = mukiAdj + reformAdj + kanriAdj + floorAdj + locAdj + viewAdj;
+
+  const caseTanka = cases.length > 0 ? cases.reduce((s,r) => s+r.tanka, 0)/cases.length : null;
+  const listTankaRaw = listings.length > 0 ? listings.reduce((s,r) => s+r.tanka, 0)/listings.length : null;
+  const listTanka = listTankaRaw ? listTankaRaw * 0.95 : null;
+
+  let avgTanka;
+  if (caseTanka && listTanka) {
+    avgTanka = caseTanka * 0.6 + listTanka * 0.4;
+  } else {
+    avgTanka = caseTanka || listTanka;
+  }
+
+  const beforePrice = Math.round(avgTanka * targetArea);
+  const finalRaw = beforePrice * (1 + totalAdj / 100);
+  const finalPrice = Math.round(finalRaw / 50) * 50;
+  const lowerPrice = Math.round(finalPrice * 0.95 / 50) * 50;
+  const upperPrice = Math.round(finalPrice * 1.05 / 50) * 50;
+
+  document.getElementById('r-case').textContent = caseTanka ? caseTanka.toFixed(2) : '—';
+  document.getElementById('r-list').textContent = listTanka ? listTanka.toFixed(2) : '—';
+  document.getElementById('r-avg').textContent = avgTanka.toFixed(2);
+  document.getElementById('r-before').textContent = beforePrice.toLocaleString();
+  document.getElementById('r-adj-total').textContent = (totalAdj >= 0 ? '+' : '') + totalAdj + '%';
+  document.getElementById('r-final').textContent = finalPrice.toLocaleString();
+  document.getElementById('r-range').textContent = `万円　（${lowerPrice.toLocaleString()}〜${upperPrice.toLocaleString()}万円）`;
+
+  const adjBreakdown = [
+    mukiAdj !== 0 && `向き補正：${mukiAdj >= 0 ? '+' : ''}${mukiAdj}%`,
+    reformAdj !== 0 && `リフォーム補正：${reformAdj >= 0 ? '+' : ''}${reformAdj}%`,
+    kanriAdj !== 0 && `管理状態補正：${kanriAdj >= 0 ? '+' : ''}${kanriAdj}%`,
+    floorAdj !== 0 && `階数補正：${floorAdj >= 0 ? '+' : ''}${floorAdj}%`,
+    locAdj !== 0 && `立地補正：${locAdj >= 0 ? '+' : ''}${locAdj}%`,
+    viewAdj !== 0 && `眺望補正：${viewAdj >= 0 ? '+' : ''}${viewAdj}%`,
+  ].filter(Boolean).join(' / ') || 'なし';
+
+  let detail = '【算出根拠】\n';
+  if (caseTanka) {
+    detail += `● 成約事例（${cases.length}件、ウェイト60%）　平均㎡単価：${caseTanka.toFixed(2)}万円/㎡\n`;
+    cases.forEach((c,i) => detail += `  事例${i+1}：${c.loc||'—'}　${c.price}万円 / ${c.area}㎡ / ㎡単価${c.tanka.toFixed(2)}万円\n`);
+  }
+  if (listTanka) {
+    detail += `\n● 販売中物件（${listings.length}件、ウェイト40%）　㎡単価${(listTankaRaw).toFixed(2)}万円 × 成約率補正95% = ${listTanka.toFixed(2)}万円/㎡\n`;
+    listings.forEach((l,i) => detail += `  物件${i+1}：${l.loc||'—'}　${l.price}万円 / ${l.area}㎡ / ㎡単価${l.tanka.toFixed(2)}万円\n`);
+  }
+  detail += `\n● 加重平均㎡単価：${avgTanka.toFixed(2)}万円/㎡\n`;
+  detail += `  → 補正前査定額：${avgTanka.toFixed(2)} × ${targetArea}㎡ = ${beforePrice.toLocaleString()}万円\n`;
+  detail += `● 補正内訳：${adjBreakdown}（合計 ${totalAdj >= 0 ? '+' : ''}${totalAdj}%）\n`;
+  detail += `● 最終査定額：${finalPrice.toLocaleString()}万円　（価格帯：${lowerPrice.toLocaleString()}〜${upperPrice.toLocaleString()}万円）`;
+
+  document.getElementById('r-detail').textContent = detail;
+  document.getElementById('result-section').classList.add('show');
+  document.getElementById('result-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function copyResult() {
+  const addr = document.getElementById('addr').value;
+  const eki = document.getElementById('eki').value;
+  const area = document.getElementById('area').value;
+  const age = document.getElementById('age').value;
+  const madori = document.getElementById('madori').value;
+  const muki = document.getElementById('muki').options[document.getElementById('muki').selectedIndex].text;
+  const biko = document.getElementById('biko').value;
+  const detail = document.getElementById('r-detail').textContent;
+  const finalPrice = document.getElementById('r-final').textContent;
+  const range = document.getElementById('r-range').textContent;
+  const type = btype === 'm' ? 'マンション' : '一戸建て';
+
+  const text = `以下の査定結果をもとに、不動産査定書に記載する査定コメントを作成してください。
+
+【物件情報】
+種別：${type} / 所在地：${addr} / 交通：${eki}
+面積：${area}㎡ / 間取り：${madori} / 築年数：${age}年 / 向き：${muki}
+特記事項：${biko || 'なし'}
+
+【査定結果】
+査定価格：${finalPrice}万円
+価格帯：${range}
+
+${detail}
+
+作成内容：
+1. 査定価格の根拠説明（成約事例・販売中物件の比較）
+2. 物件の強み・アピールポイント（3点）
+3. 売却活動に向けたアドバイス
+合計400〜500文字でお願いします。`;
+
+  navigator.clipboard.writeText(text).then(() => {
+    alert('コピーしました！\nClaudeのチャットに貼り付けて送信してください。');
+  }).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    alert('コピーしました！\nClaudeのチャットに貼り付けて送信してください。');
+  });
+}
+
+addCase(); addCase(); addCase();
+addListing(); addListing();
+updateAdj();
+
+// ===== マップ連携：localStorageから読み込み =====
+function loadFromMap() {
+  try {
+    const data = JSON.parse(localStorage.getItem('satei_listings') || '[]');
+    if (!data.length) return;
+
+    // 既存の空行をクリア（空の listings を削除）
+    document.querySelectorAll('[id^="l_price_"]').forEach((el, i) => {
+      if (!el.value) {
+        const row = document.getElementById(`l-row-${i}`);
+        if (row) row.remove();
+      }
+    });
+
+    data.forEach(p => {
+      const idx = listIdx;
+      makeRow('listings', 'l', listIdx++);
+      setTimeout(() => {
+        const locEl = document.getElementById(`l_loc_${idx}`);
+        const priceEl = document.getElementById(`l_price_${idx}`);
+        const areaEl = document.getElementById(`l_area_${idx}`);
+        const ageEl = document.getElementById(`l_age_${idx}`);
+        if (locEl) locEl.value = p.name;
+        if (priceEl) priceEl.value = p.price;
+        if (areaEl) areaEl.value = p.area;
+        if (ageEl) ageEl.value = p.age || '';
+        updateTanka('l', idx);
+      }, 30);
+    });
+
+    // バナー表示
+    showImportBanner(data.length);
+    localStorage.removeItem('satei_listings');
+  } catch(e) { console.log(e); }
+}
+
+function showImportBanner(count) {
+  const banner = document.getElementById('import-banner');
+  if (banner) {
+    banner.textContent = `✓ マップから ${count}件の販売中物件を取り込みました`;
+    banner.style.display = 'block';
+    setTimeout(() => { banner.style.opacity = '0'; setTimeout(() => banner.style.display = 'none', 500); }, 4000);
+  }
+}
+
+// ページ読み込み時に自動チェック
+window.addEventListener('load', () => {
+  const data = JSON.parse(localStorage.getItem('satei_listings') || '[]');
+  if (data.length) loadFromMap();
+});
+
+// 手動インポートボタン
+document.getElementById('import-map-btn')?.addEventListener('click', () => {
+  const data = JSON.parse(localStorage.getItem('satei_listings') || '[]');
+  if (!data.length) {
+    alert('マップからの物件データがありません。\n先に「近隣販売事例マップ」で物件を追加してください。');
+    return;
+  }
+  loadFromMap();
+});
+
+</script>
+</body>
+</html>
