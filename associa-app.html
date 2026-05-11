@@ -1104,6 +1104,19 @@ function setFilter(el, type) {
   });
   el.classList.add('active');
   activeFilter = type;
+  // フィルター変更時に再検索
+  const addr = document.getElementById('map-addr').value.trim();
+  if (addr && allProps.length > 0) {
+    const filtered = filterByType(allProps, type);
+    renderMapMarkers(filtered);
+    renderMapList(filtered);
+    renderMapStats(filtered);
+  }
+}
+
+function filterByType(props, type) {
+  if (type === 'all') return props;
+  return props.filter(p => p.type === type);
 }
 
 function setRadiusFilter(el, r) {
@@ -1112,33 +1125,43 @@ function setRadiusFilter(el, r) {
   });
   el.classList.add('active');
   searchRadius = r;
+  // 半径変更時は再検索
+  const addr = document.getElementById('map-addr').value.trim();
+  if (addr) doMapSearch();
 }
 
 // 住所を段階的に短くして検索（番地→丁目→町名→区の順でフォールバック）
 async function geocode(addr) {
+  // 末尾の番地・号・丁目・町名を除去して区レベルに正規化
+  const normalize = (a) => {
+    return a
+      .replace(/[\s　]/g, '')
+      .replace(/\d+番地.*$/, '')
+      .replace(/\d+[-－]\d+.*$/, '')
+      .replace(/\d+丁目.*$/, '')
+      .replace(/[一二三四五六七八九十百]+丁目.*$/, '')
+      .replace(/\d+$/, '')
+      .trim();
+  };
+
   // 検索候補を段階的に生成
   const candidates = [];
 
   // 元の住所
   candidates.push(addr);
 
-  // 末尾の番地（数字-数字）を除去
-  const noNum = addr.replace(/[\s　]*\d+[-－]\d+.*$/, '').replace(/[\s　]*\d+番地.*$/, '').replace(/[\s　]*\d+$/, '').trim();
+  // 番地・丁目を除去
+  const noNum = normalize(addr);
   if (noNum !== addr) candidates.push(noNum);
 
-  // 「大阪府」を付加したバージョン
+  // 「大阪府」を付加
   if (!addr.includes('大阪府')) {
     candidates.push('大阪府 ' + noNum);
-    candidates.push('大阪府 ' + addr);
   }
 
-  // 丁目以降を除去した区レベル
-  const districtOnly = addr.replace(/[\s　]*\d+丁目.*$/, '').trim();
-  if (districtOnly !== addr && districtOnly !== noNum) candidates.push(districtOnly);
-
-  // 区レベル（例：「大阪市阿倍野区」）
-  const match = addr.match(/(.+?[都道府県].+?[市区町村])/);
-  if (match) candidates.push(match[1]);
+  // 町名以降を除去（区レベル）
+  const areaMatch = noNum.match(/(.+?[市区町村])/);
+  if (areaMatch && areaMatch[1] !== noNum) candidates.push(areaMatch[1]);
 
   // 順番に試す
   for (const q of candidates) {
@@ -1306,8 +1329,32 @@ async function fetchMLITData(lat, lng, type, addr) {
   return results;
 }
 
-// APIデータを内部形式に変換
-function convertMLITData(rawData, clat, clng, typeFilter, radius) {
+// 地区名→緯度経度キャッシュ
+const geocodeCache = {};
+
+async function getDistrictLatLng(districtName, municipality, clat, clng, radius) {
+  const key = `${municipality}${districtName}`;
+  if (geocodeCache[key]) return geocodeCache[key];
+
+  if (!districtName) return null;
+
+  try {
+    const q = `${municipality}${districtName} 大阪府`;
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1&accept-language=ja&countrycodes=jp`,
+      {headers:{'User-Agent':'AssociaApp/1.0'}}
+    );
+    const d = await res.json();
+    if (d.length > 0) {
+      const result = { lat: parseFloat(d[0].lat), lng: parseFloat(d[0].lon) };
+      geocodeCache[key] = result;
+      return result;
+    }
+  } catch(e) {}
+  return null;
+}
+
+async function convertMLITDataAsync(rawData, clat, clng, typeFilter, radius) {
   const tNames = {mansion:'マンション', house:'一戸建て', land:'土地'};
   const typeKeys = {
     'マンション等':'mansion', '中古マンション等':'mansion',
@@ -1317,48 +1364,57 @@ function convertMLITData(rawData, clat, clng, typeFilter, radius) {
 
   const filtered = rawData.filter(item => {
     if (!item.TradePrice || !item.Area) return false;
-    const itemType = typeKeys[item.Type] || 'mansion';
-    if (typeFilter !== 'all' && itemType !== typeFilter) return false;
     return true;
   });
 
-  // 緯度経度の推定（APIにない場合は中心周辺にランダム配置）
-  return filtered.slice(0, 30).map((item, i) => {
-    const price = Math.round(parseInt(item.TradePrice || 0) / 10000); // 万円
+  const results = [];
+  for (let i = 0; i < Math.min(filtered.length, 30); i++) {
+    const item = filtered[i];
+    const price = Math.round(parseInt(item.TradePrice || 0) / 10000);
     const area = parseFloat(item.Area || 0);
-    const tanka = area > 0 ? Math.round(price / area * 10) / 10 : 0;
+    if (price <= 0 || area <= 0) continue;
+    const tanka = Math.round(price / area * 10) / 10;
     const itemType = typeKeys[item.Type] || 'mansion';
 
-    // 緯度経度推定（同エリア内でランダム配置）
-    const angle = (i / filtered.length) * 2 * Math.PI + Math.random() * 0.5;
-    const dist = (Math.random() * 0.7 + 0.1) * radius;
-    const lat = clat + (dist * Math.cos(angle)) / 111000;
-    const lng = clng + (dist * Math.sin(angle)) / (111000 * Math.cos(clat * Math.PI / 180));
-    const actualDist = Math.round(calcDist(clat, clng, lat, lng));
+    if (typeFilter !== 'all' && itemType !== typeFilter) continue;
 
-    // 物件名生成
+    // 地区名からNominatimで緯度経度取得（キャッシュ付き）
+    let lat, lng;
+    const pos = await getDistrictLatLng(item.DistrictName, item.Municipality, clat, clng, radius);
+    if (pos) {
+      // 少しランダムにずらして重複を避ける
+      lat = pos.lat + (Math.random() - 0.5) * 0.002;
+      lng = pos.lng + (Math.random() - 0.5) * 0.002;
+    } else {
+      // フォールバック：中心周辺にランダム配置
+      const angle = (i / filtered.length) * 2 * Math.PI + Math.random() * 0.5;
+      const dist = (Math.random() * 0.6 + 0.1) * radius;
+      lat = clat + (dist * Math.cos(angle)) / 111000;
+      lng = clng + (dist * Math.sin(angle)) / (111000 * Math.cos(clat * Math.PI / 180));
+    }
+
+    const actualDist = Math.round(calcDist(clat, clng, lat, lng));
     const district = item.DistrictName || item.Municipality || '';
     const period = item.Period || '';
     const name = `${district} ${item.Type || ''} (${period})`.trim();
 
-    // 築年数
     let age = null;
     if (item.BuildingYear && item.BuildingYear !== '戦前') {
       const buildYear = parseInt(item.BuildingYear.replace('年',''));
       if (!isNaN(buildYear)) age = new Date().getFullYear() - buildYear;
     }
 
-    return {
+    results.push({
       id: i, name, type: itemType,
       typeName: tNames[itemType],
       price, area, age, tanka,
       lat, lng, dist: actualDist,
       floor: item.FloorPlan || '',
-      purpose: item.Purpose || '',
       raw: item
-    };
-  }).filter(p => p.price > 0 && p.area > 0)
-    .sort((a, b) => a.dist - b.dist);
+    });
+  }
+
+  return results.sort((a, b) => a.dist - b.dist);
 }
 
 async function doMapSearch() {
@@ -1382,7 +1438,7 @@ async function doMapSearch() {
     try {
       const rawData = await fetchMLITData(lat, lng, activeFilter, addr);
       if (rawData.length > 0) {
-        props = convertMLITData(rawData, lat, lng, activeFilter, searchRadius);
+        props = await convertMLITDataAsync(rawData, lat, lng, activeFilter, searchRadius);
         showToast(`✓ 国交省データ ${props.length}件を表示`);
       } else {
         showToast('⚠ データなし：検索範囲を広げてください');
