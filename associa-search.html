@@ -353,10 +353,10 @@ function setType(btn,type){
 function applyFilters(){
   let data=[...allData];
 
-  // 町名絞り込み（Municipality と DistrictName 両方チェック）
+  // 町名絞り込み（DistrictName で照合）
   if(searchKeyword){
     const kw=norm(searchKeyword);
-    data=data.filter(d=>norm(d.Municipality||'').includes(kw)||norm(d.DistrictName||'').includes(kw));
+    data=data.filter(d=>norm(d.DistrictName||'').includes(kw));
   }
 
   // 種別
@@ -454,7 +454,7 @@ function renderTable(){
     const prStr=fPrice(prc(d));
     const tkStr=fTanka(tnk(d));
     const area=d.Area?`${d.Area}㎡`:'—';
-    const munic=d.Municipality||d.DistrictName||'—';
+    const munic=d.DistrictName||d.Municipality||'—';
     const mad=d.FloorPlan||'—';
     const yo=d.FloorAreaRatio?`${d.FloorAreaRatio}%`:'—';
     const ke=d.CoverageRatio?`${d.CoverageRatio}%`:'—';
