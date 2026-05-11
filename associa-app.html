@@ -718,38 +718,63 @@ html,body{
 
     <!-- ===== MAP ===== -->
     <div class="tab-panel" id="panel-map" style="overflow:hidden;display:flex;flex-direction:column;">
+
+      <!-- 検索バー -->
       <div class="map-search-bar">
         <div class="map-search-row" style="position:relative;">
-          <input class="map-search-input" id="map-addr" placeholder="町名・駅名で検索（例：阿倍野、天王寺）" type="text" autocomplete="off" oninput="showSuggestions(this.value)" onkeydown="if(event.key==='Enter')doMapSearch()">
+          <input class="map-search-input" id="map-addr" placeholder="町名・駅名で検索（例：相生通、天王寺駅）" type="text" autocomplete="off" oninput="showSuggestions(this.value)" onkeydown="if(event.key==='Enter')doMapSearch()">
           <button class="map-search-btn" onclick="doMapSearch()">検索</button>
           <div id="suggest-list" style="display:none;position:absolute;top:42px;left:0;right:48px;background:#fff;border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow-lg);z-index:999;max-height:200px;overflow-y:auto;"></div>
         </div>
+
         <!-- よく使うエリア -->
-        <div style="font-size:10px;color:var(--muted);letter-spacing:.08em;margin:8px 0 5px;">よく使うエリア</div>
-        <div class="map-filter-row" id="quick-areas">
-          <button class="filter-chip" onclick="quickSearch('大阪市阿倍野区')">阿倍野</button>
-          <button class="filter-chip" onclick="quickSearch('大阪市天王寺区')">天王寺</button>
-          <button class="filter-chip" onclick="quickSearch('大阪市北区梅田')">梅田</button>
-          <button class="filter-chip" onclick="quickSearch('大阪市中央区北浜')">北浜</button>
-          <button class="filter-chip" onclick="quickSearch('大阪市浪速区難波')">難波</button>
-          <button class="filter-chip" onclick="quickSearch('大阪市住吉区')">住吉</button>
+        <div style="font-size:10px;color:var(--muted);letter-spacing:.08em;margin:8px 0 4px;">エリアから選ぶ</div>
+        <div class="map-filter-row">
+          <button class="filter-chip" onclick="quickSearch('大阪市阿倍野区')">阿倍野区</button>
+          <button class="filter-chip" onclick="quickSearch('大阪市天王寺区')">天王寺区</button>
+          <button class="filter-chip" onclick="quickSearch('大阪市北区')">北区</button>
+          <button class="filter-chip" onclick="quickSearch('大阪市中央区')">中央区</button>
+          <button class="filter-chip" onclick="quickSearch('大阪市浪速区')">浪速区</button>
+          <button class="filter-chip" onclick="quickSearch('大阪市住吉区')">住吉区</button>
           <button class="filter-chip" onclick="quickSearch('大阪市西区')">西区</button>
-          <button class="filter-chip" onclick="quickSearch('大阪市福島区')">福島</button>
+          <button class="filter-chip" onclick="quickSearch('大阪市福島区')">福島区</button>
         </div>
-        <!-- 物件種別・半径フィルター -->
-        <div class="map-filter-row" style="margin-top:6px;">
+
+        <!-- 絞り込み -->
+        <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;align-items:center;">
+          <div style="font-size:10px;color:var(--muted);">種別</div>
           <button class="filter-chip active" data-type="all" onclick="setFilter(this,'all')">すべて</button>
           <button class="filter-chip" data-type="mansion" onclick="setFilter(this,'mansion')">マンション</button>
           <button class="filter-chip" data-type="house" onclick="setFilter(this,'house')">一戸建て</button>
           <button class="filter-chip" data-type="land" onclick="setFilter(this,'land')">土地</button>
-          <button class="filter-chip" data-type="500" onclick="setRadiusFilter(this,500)">500m</button>
-          <button class="filter-chip" data-type="1000" onclick="setRadiusFilter(this,1000)">1km</button>
-          <button class="filter-chip" data-type="2000" onclick="setRadiusFilter(this,2000)">2km</button>
+          <div style="font-size:10px;color:var(--muted);margin-left:4px;">期間</div>
+          <select id="period-from" style="font-size:11px;padding:4px 6px;border:1px solid var(--border);border-radius:4px;background:var(--white);">
+            <option value="20241">2024年Q1</option>
+            <option value="20242">2024年Q2</option>
+            <option value="20243">2024年Q3</option>
+            <option value="20244">2024年Q4</option>
+            <option value="20251" selected>2025年Q1</option>
+          </select>
+          <span style="font-size:11px;color:var(--muted);">〜</span>
+          <select id="period-to" style="font-size:11px;padding:4px 6px;border:1px solid var(--border);border-radius:4px;background:var(--white);">
+            <option value="20241">2024年Q1</option>
+            <option value="20242">2024年Q2</option>
+            <option value="20243">2024年Q3</option>
+            <option value="20244">2024年Q4</option>
+            <option value="20251">2025年Q1</option>
+            <option value="20252">2025年Q2</option>
+            <option value="20253">2025年Q3</option>
+            <option value="20254" selected>2025年Q4</option>
+          </select>
         </div>
       </div>
-      <div id="map-container" style="flex:1;min-height:200px;">
-        <div id="map"></div>
+
+      <!-- 地図（折りたたみ） -->
+      <div id="map-container" style="height:180px;flex-shrink:0;">
+        <div id="map" style="width:100%;height:100%;"></div>
       </div>
+
+      <!-- 統計バー -->
       <div class="map-stats" id="map-stats">
         <div class="map-stats-grid">
           <div class="map-stat"><div class="map-stat-val" id="ms-avg">—</div><div class="map-stat-label">平均価格(万)</div></div>
@@ -757,7 +782,32 @@ html,body{
           <div class="map-stat"><div class="map-stat-val" id="ms-count">—</div><div class="map-stat-label">件数</div></div>
         </div>
       </div>
-      <div class="map-list" id="map-list"></div>
+
+      <!-- テーブルツールバー -->
+      <div id="table-toolbar" style="display:none;padding:8px 12px;background:var(--white);border-top:1px solid var(--border);border-bottom:1px solid var(--border);display:none;align-items:center;gap:8px;flex-wrap:wrap;">
+        <div style="font-size:12px;color:var(--muted);flex:1;" id="table-count"></div>
+        <input id="table-filter" type="text" placeholder="絞り込み（地区名・駅名など）" style="font-size:12px;padding:6px 10px;border:1px solid var(--border);border-radius:4px;width:160px;" oninput="filterTable(this.value)">
+        <select id="table-sort" style="font-size:12px;padding:6px 8px;border:1px solid var(--border);border-radius:4px;" onchange="sortTable(this.value)">
+          <option value="price-desc">価格（高い順）</option>
+          <option value="price-asc">価格（安い順）</option>
+          <option value="tanka-desc">㎡単価（高い順）</option>
+          <option value="tanka-asc">㎡単価（安い順）</option>
+          <option value="area-desc">面積（広い順）</option>
+          <option value="area-asc">面積（狭い順）</option>
+          <option value="age-asc">築年数（新しい順）</option>
+        </select>
+        <button onclick="sendAllToSatei()" style="font-size:11px;padding:6px 12px;background:var(--gold-pale);border:1px solid rgba(184,146,74,0.3);border-radius:4px;color:var(--gold);cursor:pointer;white-space:nowrap;">査定へ一括送信</button>
+      </div>
+
+      <!-- 一覧テーブル -->
+      <div style="flex:1;overflow-y:auto;" id="result-table-wrap">
+        <div id="result-table-body">
+          <div style="padding:32px 16px;text-align:center;color:var(--muted);font-size:13px;">
+            上のエリアボタンまたは住所・町名を入力して検索してください
+          </div>
+        </div>
+      </div>
+
     </div>
 
     <!-- ===== SATEI ===== -->
@@ -1419,48 +1469,63 @@ async function convertMLITDataAsync(rawData, clat, clng, typeFilter, radius) {
 
 async function doMapSearch() {
   const addr = document.getElementById('map-addr').value.trim();
-  if (!addr) { showToast('住所を入力してください'); return; }
+  if (!addr) { showToast('住所・町名を入力してください'); return; }
   showToast('🔍 国交省データを取得中...');
-  markers.forEach(m=>map.removeLayer(m));
-  markers=[];
+  markers.forEach(m=>map.removeLayer(m)); markers=[];
   if (circleLayer){map.removeLayer(circleLayer);circleLayer=null;}
-  document.getElementById('map-list').innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px;">データを取得中です...</div>';
+  document.getElementById('result-table-body').innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px;">データを取得中...</div>';
   document.getElementById('map-stats').classList.remove('show');
+  document.getElementById('table-toolbar').style.display='none';
+  if(document.getElementById('table-filter')) document.getElementById('table-filter').value='';
+  currentFilter='';
   try {
     const {lat,lng} = await geocode(addr);
-    map.setView([lat,lng], searchRadius<=500?16:searchRadius<=1000?15:14);
+    window._searchLat = lat; window._searchLng = lng;
+    map.setView([lat,lng], 14);
     circleLayer=L.circle([lat,lng],{radius:searchRadius,color:'#b8924a',fillColor:'#b8924a',fillOpacity:.05,weight:1.5,dashArray:'6 4'}).addTo(map);
     const cIcon=L.divIcon({html:`<div style="width:12px;height:12px;background:#0f1e35;border:3px solid #b8924a;border-radius:50%;box-shadow:0 0 0 4px rgba(184,146,74,0.15)"></div>`,iconSize:[12,12],iconAnchor:[6,6],className:''});
     L.marker([lat,lng],{icon:cIcon}).addTo(map);
-
-    // 国交省APIからリアルデータ取得
-    let props = [];
-    try {
-      const rawData = await fetchMLITData(lat, lng, activeFilter, addr);
-      if (rawData.length > 0) {
-        props = await convertMLITDataAsync(rawData, lat, lng, activeFilter, searchRadius);
-        showToast(`✓ 国交省データ ${props.length}件を表示`);
-      } else {
-        showToast('⚠ データなし：検索範囲を広げてください');
-      }
-    } catch(apiErr) {
-      console.log('APIエラー:', apiErr);
-      showToast('⚠ APIエラー：再試行してください');
-    }
-
-    allProps = props;
-    if (props.length > 0) {
-      renderMapMarkers(props);
-      renderMapList(props);
-      renderMapStats(props);
+    const periodFrom = document.getElementById('period-from').value;
+    const periodTo = document.getElementById('period-to').value;
+    const rawData = await fetchMLITDataRange(lat, lng, addr, periodFrom, periodTo);
+    if (rawData.length > 0) {
+      allRawData = convertToTableData(rawData);
+      applyFilterSort();
+      renderMapStats(allRawData);
+      showToast(`✓ ${allRawData.length}件を表示`);
     } else {
-      document.getElementById('map-list').innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px;">このエリアの成約事例が見つかりませんでした。<br>別のエリアや検索範囲で試してください。</div>';
+      document.getElementById('result-table-body').innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px;">データが見つかりませんでした。別のエリアや期間で試してください。</div>';
+      showToast('⚠ データが見つかりません');
     }
-    stats.search++;updateStats();
+    stats.search++; updateStats();
   } catch(e) {
     showToast('⚠ ' + e.message);
-    document.getElementById('map-list').innerHTML='';
+    document.getElementById('result-table-body').innerHTML = '<div style="padding:24px;text-align:center;color:var(--red);font-size:13px;">エラーが発生しました。</div>';
   }
+}
+
+async function fetchMLITDataRange(lat, lng, addr, periodFrom, periodTo) {
+  let prefCode='27', cityCode='';
+  const addrStr=(addr||'').replace(/\s/g,'');
+  const cityMap={'阿倍野':'27109','天王寺':'27111','北区':'27102','梅田':'27102','中央区':'27128','淀屋橋':'27128','北浜':'27128','心斎橋':'27128','住吉':'27120','浪速':'27107','難波':'27107','西区':'27104','福島':'27103','此花':'27105','港区':'27106','大正':'27108','東成':'27110','生野':'27112','旭区':'27113','城東':'27114','鶴見':'27115','住之江':'27116','平野':'27117','西成':'27118','淀川':'27119','東淀川':'27127','東住吉':'27121','西淀川':'27122','都島':'27123','豊中':'27203','吹田':'27205','守口':'27208','枚方':'27210','茨木':'27211','八尾':'27212','堺':'27201'};
+  for(const [key,code] of Object.entries(cityMap)){if(addrStr.includes(key)){cityCode=code;prefCode=code.substring(0,2);break;}}
+  if(!cityCode) cityCode='27128';
+  console.log('市区町村コード:', cityCode);
+  const results=[];
+  const fromYear=parseInt(periodFrom.substring(0,4)), fromQ=parseInt(periodFrom.substring(4));
+  const toYear=parseInt(periodTo.substring(0,4)), toQ=parseInt(periodTo.substring(4));
+  for(let y=fromYear;y<=toYear;y++){
+    const qStart=(y===fromYear)?fromQ:1, qEnd=(y===toYear)?toQ:4;
+    for(let q=qStart;q<=qEnd;q++){
+      try{
+        const res=await fetch(`${MLIT_PROXY_URL}?endpoint=XIT001&year=${y}&quarter=${q}&area=${prefCode}&city=${cityCode}&language=ja`);
+        if(!res.ok) continue;
+        const data=await res.json();
+        if(data.data&&data.data.length>0) results.push(...data.data);
+      }catch(e){continue;}
+    }
+  }
+  return results;
 }
 
 function renderMapMarkers(props) {
@@ -1732,7 +1797,185 @@ function showToast(msg) {
   setTimeout(()=>t.classList.remove('show'),2500);
 }
 
-// ===== オートコンプリート =====
+// ===== テーブル表示 =====
+let allRawData = [];
+let filteredData = [];
+let currentSort = 'price-desc';
+let currentFilter = '';
+
+function renderTable(data) {
+  const wrap = document.getElementById('result-table-body');
+  if (!data.length) {
+    wrap.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px;">条件に合うデータがありません</div>';
+    return;
+  }
+
+  const typeNames = {mansion:'マンション', house:'一戸建て', land:'土地'};
+  const typeColors = {mansion:'#e8f0fb', house:'#edf7ed', land:'#fff3e0'};
+  const typeTextColors = {mansion:'#1a4fa0', house:'#1a5e20', land:'#8a4500'};
+
+  wrap.innerHTML = `
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead>
+        <tr style="background:var(--navy);color:#fff;position:sticky;top:0;z-index:5;">
+          <th style="padding:8px 10px;text-align:left;font-weight:500;white-space:nowrap;">No</th>
+          <th style="padding:8px 10px;text-align:left;font-weight:500;white-space:nowrap;">種別</th>
+          <th style="padding:8px 10px;text-align:left;font-weight:500;white-space:nowrap;">地区名</th>
+          <th style="padding:8px 10px;text-align:right;font-weight:500;white-space:nowrap;">取引総額</th>
+          <th style="padding:8px 10px;text-align:right;font-weight:500;white-space:nowrap;">面積</th>
+          <th style="padding:8px 10px;text-align:right;font-weight:500;white-space:nowrap;">㎡単価</th>
+          <th style="padding:8px 10px;text-align:left;font-weight:500;white-space:nowrap;">間取り</th>
+          <th style="padding:8px 10px;text-align:left;font-weight:500;white-space:nowrap;">築年</th>
+          <th style="padding:8px 10px;text-align:left;font-weight:500;white-space:nowrap;">構造</th>
+          <th style="padding:8px 10px;text-align:left;font-weight:500;white-space:nowrap;">取引時期</th>
+          <th style="padding:8px 6px;text-align:center;font-weight:500;white-space:nowrap;"></th>
+        </tr>
+      </thead>
+      <tbody>
+        ${data.map((p, i) => `
+          <tr style="border-bottom:1px solid var(--border2);${i%2===0?'background:var(--white)':'background:var(--bg)'}" onmouseover="this.style.background='var(--gold-pale)'" onmouseout="this.style.background='${i%2===0?'var(--white)':'var(--bg)'}'">
+            <td style="padding:8px 10px;color:var(--muted);">${i+1}</td>
+            <td style="padding:8px 10px;">
+              <span style="font-size:10px;padding:2px 6px;border-radius:3px;background:${typeColors[p.type]||'#eee'};color:${typeTextColors[p.type]||'#333'};white-space:nowrap;">${p.typeName}</span>
+            </td>
+            <td style="padding:8px 10px;font-weight:500;color:var(--navy);">${p.district}</td>
+            <td style="padding:8px 10px;text-align:right;font-weight:600;color:var(--red);">${p.price.toLocaleString()}万円</td>
+            <td style="padding:8px 10px;text-align:right;">${p.area}㎡</td>
+            <td style="padding:8px 10px;text-align:right;color:var(--muted);">${p.tanka}万/㎡</td>
+            <td style="padding:8px 10px;color:var(--muted);">${p.floorPlan||'—'}</td>
+            <td style="padding:8px 10px;color:var(--muted);">${p.buildYear||'—'}</td>
+            <td style="padding:8px 10px;color:var(--muted);">${p.structure||'—'}</td>
+            <td style="padding:8px 10px;color:var(--muted);white-space:nowrap;">${p.period}</td>
+            <td style="padding:8px 6px;text-align:center;">
+              <button onclick="sendOneToSatei(${i})" style="font-size:10px;padding:3px 8px;background:var(--gold-pale);border:1px solid rgba(184,146,74,0.3);border-radius:3px;color:var(--gold);cursor:pointer;white-space:nowrap;" id="tbtn-${i}">査定へ</button>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+
+  // ツールバー表示
+  const toolbar = document.getElementById('table-toolbar');
+  toolbar.style.display = 'flex';
+  document.getElementById('table-count').textContent = `${data.length}件表示中`;
+}
+
+function filterTable(val) {
+  currentFilter = val;
+  applyFilterSort();
+}
+
+function sortTable(val) {
+  currentSort = val;
+  applyFilterSort();
+}
+
+function applyFilterSort() {
+  let data = [...allRawData];
+
+  // 種別フィルター
+  if (activeFilter !== 'all') {
+    data = data.filter(p => p.type === activeFilter);
+  }
+
+  // テキスト絞り込み
+  if (currentFilter) {
+    const q = currentFilter.toLowerCase();
+    data = data.filter(p =>
+      (p.district||'').includes(q) ||
+      (p.typeName||'').includes(q) ||
+      (p.floorPlan||'').includes(q) ||
+      (p.period||'').includes(q) ||
+      (p.structure||'').includes(q)
+    );
+  }
+
+  // 並び替え
+  const sortFns = {
+    'price-desc': (a,b) => b.price - a.price,
+    'price-asc':  (a,b) => a.price - b.price,
+    'tanka-desc': (a,b) => b.tanka - a.tanka,
+    'tanka-asc':  (a,b) => a.tanka - b.tanka,
+    'area-desc':  (a,b) => b.area - a.area,
+    'area-asc':   (a,b) => a.area - b.area,
+    'age-asc':    (a,b) => (a.buildYearNum||9999) - (b.buildYearNum||9999),
+  };
+  if (sortFns[currentSort]) data.sort(sortFns[currentSort]);
+
+  filteredData = data;
+  renderTable(data);
+  renderMapMarkers(data);
+  renderMapStats(data);
+  document.getElementById('table-count').textContent = `${data.length}件表示中`;
+}
+
+function convertToTableData(rawData) {
+  const typeKeys = {
+    'マンション等':'mansion','中古マンション等':'mansion',
+    '宅地(土地)':'land','宅地(土地と建物)':'land',
+    '中古住宅':'house','農地':'land','林地':'land'
+  };
+  const tNames = {mansion:'マンション',house:'一戸建て',land:'土地'};
+
+  return rawData.filter(item => item.TradePrice && item.Area).map((item, i) => {
+    const price = Math.round(parseInt(item.TradePrice||0)/10000);
+    const area = parseFloat(item.Area||0);
+    const tanka = area>0 ? Math.round(price/area*10)/10 : 0;
+    const type = typeKeys[item.Type]||'mansion';
+    let buildYearNum = null;
+    if (item.BuildingYear && item.BuildingYear!=='戦前') {
+      buildYearNum = parseInt(item.BuildingYear.replace('年',''));
+    }
+    // 中心点近くにランダム配置（地図用）
+    const angle = (i/rawData.length)*2*Math.PI + Math.random()*0.3;
+    const dist = (Math.random()*0.5+0.1)*searchRadius;
+    const lat = (window._searchLat||34.6937) + (dist*Math.cos(angle))/111000;
+    const lng = (window._searchLng||135.5023) + (dist*Math.sin(angle))/(111000*Math.cos((window._searchLat||34.6937)*Math.PI/180));
+
+    return {
+      id: i, type, typeName: tNames[type],
+      district: item.DistrictName||item.Municipality||'',
+      price, area, tanka,
+      floorPlan: item.FloorPlan||'',
+      buildYear: item.BuildingYear||'',
+      buildYearNum,
+      structure: item.Structure||'',
+      period: item.Period||'',
+      lat, lng,
+      dist: Math.round(calcDist(window._searchLat||34.6937, window._searchLng||135.5023, lat, lng)),
+      raw: item
+    };
+  }).filter(p => p.price>0 && p.area>0);
+}
+
+function sendOneToSatei(idx) {
+  const p = filteredData[idx];
+  if (!p) return;
+  const existing = JSON.parse(localStorage.getItem('satei_listings')||'[]');
+  if (!existing.find(e=>e.name===p.district&&e.price===p.price)) {
+    existing.push({name:`${p.district} ${p.typeName}`, price:p.price, area:p.area, age:p.buildYearNum?new Date().getFullYear()-p.buildYearNum:''});
+    localStorage.setItem('satei_listings', JSON.stringify(existing));
+  }
+  const btn = document.getElementById(`tbtn-${idx}`);
+  if (btn) {btn.textContent='✓済';btn.style.background='#eafaf1';btn.style.color='#27ae60';}
+  showToast(`査定エンジンに追加しました`);
+}
+
+function sendAllToSatei() {
+  const existing = JSON.parse(localStorage.getItem('satei_listings')||'[]');
+  let added = 0;
+  filteredData.forEach(p => {
+    if (!existing.find(e=>e.name===`${p.district} ${p.typeName}`&&e.price===p.price)) {
+      existing.push({name:`${p.district} ${p.typeName}`, price:p.price, area:p.area, age:p.buildYearNum?new Date().getFullYear()-p.buildYearNum:''});
+      added++;
+    }
+  });
+  localStorage.setItem('satei_listings', JSON.stringify(existing));
+  showToast(`${added}件を査定エンジンに追加しました`);
+}
+
+// ===== MAP SEARCH（テーブル版） =====
 const AREA_SUGGESTIONS = [
   // 大阪市各区
   {label:'阿倍野区', full:'大阪市阿倍野区'},
