@@ -719,11 +719,25 @@ html,body{
     <!-- ===== MAP ===== -->
     <div class="tab-panel" id="panel-map" style="overflow:hidden;display:flex;flex-direction:column;">
       <div class="map-search-bar">
-        <div class="map-search-row">
-          <input class="map-search-input" id="map-addr" placeholder="住所・エリアを入力（例：大阪市阿倍野区）" type="text">
+        <div class="map-search-row" style="position:relative;">
+          <input class="map-search-input" id="map-addr" placeholder="町名・駅名で検索（例：阿倍野、天王寺）" type="text" autocomplete="off" oninput="showSuggestions(this.value)" onkeydown="if(event.key==='Enter')doMapSearch()">
           <button class="map-search-btn" onclick="doMapSearch()">検索</button>
+          <div id="suggest-list" style="display:none;position:absolute;top:42px;left:0;right:48px;background:#fff;border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow-lg);z-index:999;max-height:200px;overflow-y:auto;"></div>
         </div>
-        <div class="map-filter-row">
+        <!-- よく使うエリア -->
+        <div style="font-size:10px;color:var(--muted);letter-spacing:.08em;margin:8px 0 5px;">よく使うエリア</div>
+        <div class="map-filter-row" id="quick-areas">
+          <button class="filter-chip" onclick="quickSearch('大阪市阿倍野区')">阿倍野</button>
+          <button class="filter-chip" onclick="quickSearch('大阪市天王寺区')">天王寺</button>
+          <button class="filter-chip" onclick="quickSearch('大阪市北区梅田')">梅田</button>
+          <button class="filter-chip" onclick="quickSearch('大阪市中央区北浜')">北浜</button>
+          <button class="filter-chip" onclick="quickSearch('大阪市浪速区難波')">難波</button>
+          <button class="filter-chip" onclick="quickSearch('大阪市住吉区')">住吉</button>
+          <button class="filter-chip" onclick="quickSearch('大阪市西区')">西区</button>
+          <button class="filter-chip" onclick="quickSearch('大阪市福島区')">福島</button>
+        </div>
+        <!-- 物件種別・半径フィルター -->
+        <div class="map-filter-row" style="margin-top:6px;">
           <button class="filter-chip active" data-type="all" onclick="setFilter(this,'all')">すべて</button>
           <button class="filter-chip" data-type="mansion" onclick="setFilter(this,'mansion')">マンション</button>
           <button class="filter-chip" data-type="house" onclick="setFilter(this,'house')">一戸建て</button>
@@ -1215,17 +1229,54 @@ async function fetchMLITData(lat, lng, type, addr) {
   }
 
   if (!cityCode) {
-    // 住所から市区町村コードを推定
-    const addrStr = addr || '';
-    if (addrStr.includes('阿倍野')) cityCode = '27109'; // 大阪市阿倍野区
-    else if (addrStr.includes('北区') || addrStr.includes('梅田')) cityCode = '27102'; // 大阪市北区
-    else if (addrStr.includes('中央区') || addrStr.includes('淀屋橋') || addrStr.includes('北浜')) cityCode = '27128'; // 大阪市中央区
-    else if (addrStr.includes('天王寺')) cityCode = '27111'; // 大阪市天王寺区
-    else if (addrStr.includes('住吉')) cityCode = '27120'; // 大阪市住吉区
-    else if (addrStr.includes('浪速') || addrStr.includes('難波')) cityCode = '27107'; // 大阪市浪速区
-    else if (addrStr.includes('西区')) cityCode = '27104'; // 大阪市西区
-    else if (addrStr.includes('福島')) cityCode = '27103'; // 大阪市福島区
-    else cityCode = '27128'; // デフォルト：大阪市中央区
+    // 入力住所から直接区名を判定
+    const addrStr = (addr || '').replace(/\s/g, '');
+    const cityMap = {
+      '阿倍野': '27109',
+      '北区': '27102', '梅田': '27102',
+      '中央区': '27128', '淀屋橋': '27128', '北浜': '27128', '心斎橋': '27128',
+      '天王寺': '27111',
+      '住吉': '27120',
+      '浪速': '27107', '難波': '27107', 'なんば': '27107',
+      '西区': '27104',
+      '福島': '27103',
+      '此花': '27105',
+      '港区': '27106',
+      '大正': '27108',
+      '東成': '27110',
+      '生野': '27112',
+      '旭区': '27113',
+      '城東': '27114',
+      '鶴見': '27115',
+      '住之江': '27116',
+      '平野': '27117',
+      '西成': '27118',
+      '淀川': '27119',
+      '東淀川': '27120',
+      '東住吉': '27121',
+      '西淀川': '27122',
+      '都島': '27123',
+      '東区': '27124',
+      '西区': '27104',
+      '南区': '27125',
+      '豊中': '27203',
+      '吹田': '27205',
+      '守口': '27208',
+      '枚方': '27210',
+      '茨木': '27211',
+      '八尾': '27212',
+      '堺市': '27201',
+    };
+
+    for (const [key, code] of Object.entries(cityMap)) {
+      if (addrStr.includes(key)) {
+        cityCode = code;
+        console.log(`住所から市区町村コード特定: ${key} → ${code}`);
+        break;
+      }
+    }
+
+    if (!cityCode) cityCode = '27128'; // デフォルト：大阪市中央区
   }
 
   // 現在の年と期間（直近4四半期）
@@ -1627,6 +1678,92 @@ function showToast(msg) {
   t.textContent=msg;t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'),2500);
 }
+
+// ===== オートコンプリート =====
+const AREA_SUGGESTIONS = [
+  // 大阪市各区
+  {label:'阿倍野区', full:'大阪市阿倍野区'},
+  {label:'天王寺区', full:'大阪市天王寺区'},
+  {label:'北区・梅田', full:'大阪市北区梅田'},
+  {label:'中央区・北浜', full:'大阪市中央区北浜'},
+  {label:'中央区・心斎橋', full:'大阪市中央区心斎橋'},
+  {label:'浪速区・難波', full:'大阪市浪速区難波'},
+  {label:'住吉区', full:'大阪市住吉区'},
+  {label:'住之江区', full:'大阪市住之江区'},
+  {label:'西区', full:'大阪市西区'},
+  {label:'福島区', full:'大阪市福島区'},
+  {label:'東成区', full:'大阪市東成区'},
+  {label:'生野区', full:'大阪市生野区'},
+  {label:'城東区', full:'大阪市城東区'},
+  {label:'平野区', full:'大阪市平野区'},
+  {label:'東住吉区', full:'大阪市東住吉区'},
+  {label:'西成区', full:'大阪市西成区'},
+  {label:'淀川区', full:'大阪市淀川区'},
+  {label:'東淀川区', full:'大阪市東淀川区'},
+  {label:'都島区', full:'大阪市都島区'},
+  {label:'此花区', full:'大阪市此花区'},
+  {label:'港区', full:'大阪市港区'},
+  {label:'大正区', full:'大阪市大正区'},
+  {label:'旭区', full:'大阪市旭区'},
+  {label:'鶴見区', full:'大阪市鶴見区'},
+  // 大阪市外
+  {label:'堺市', full:'堺市堺区'},
+  {label:'豊中市', full:'豊中市'},
+  {label:'吹田市', full:'吹田市'},
+  {label:'枚方市', full:'枚方市'},
+  {label:'茨木市', full:'茨木市'},
+  {label:'八尾市', full:'八尾市'},
+  {label:'守口市', full:'守口市'},
+  // 駅名
+  {label:'天王寺駅周辺', full:'大阪市天王寺区天王寺'},
+  {label:'阿倍野駅周辺', full:'大阪市阿倍野区'},
+  {label:'難波駅周辺', full:'大阪市浪速区難波'},
+  {label:'梅田駅周辺', full:'大阪市北区梅田'},
+  {label:'心斎橋駅周辺', full:'大阪市中央区心斎橋'},
+  {label:'天満橋駅周辺', full:'大阪市中央区天満橋'},
+  {label:'淀屋橋駅周辺', full:'大阪市中央区北浜'},
+  {label:'鶴橋駅周辺', full:'大阪市東成区鶴橋'},
+  {label:'新大阪駅周辺', full:'大阪市淀川区西中島'},
+];
+
+function showSuggestions(val) {
+  const list = document.getElementById('suggest-list');
+  if (!val || val.length < 1) { list.style.display='none'; return; }
+  const filtered = AREA_SUGGESTIONS.filter(a =>
+    a.label.includes(val) || a.full.includes(val)
+  ).slice(0, 8);
+  if (!filtered.length) { list.style.display='none'; return; }
+  list.innerHTML = filtered.map(a => `
+    <div onclick="selectSuggestion('${a.full}')" style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border2);display:flex;align-items:center;gap:8px;" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background='#fff'">
+      <span style="font-size:16px;">📍</span>
+      <div>
+        <div style="font-weight:500;color:var(--navy);">${a.label}</div>
+        <div style="font-size:11px;color:var(--muted);">${a.full}</div>
+      </div>
+    </div>
+  `).join('');
+  list.style.display = 'block';
+}
+
+function selectSuggestion(full) {
+  document.getElementById('map-addr').value = full;
+  document.getElementById('suggest-list').style.display = 'none';
+  doMapSearch();
+}
+
+function quickSearch(addr) {
+  document.getElementById('map-addr').value = addr;
+  document.getElementById('suggest-list').style.display = 'none';
+  doMapSearch();
+}
+
+// クリック外でサジェストを閉じる
+document.addEventListener('click', e => {
+  if (!e.target.closest('#map-addr') && !e.target.closest('#suggest-list')) {
+    const list = document.getElementById('suggest-list');
+    if (list) list.style.display = 'none';
+  }
+});
 
 // Enter key for map search
 document.getElementById('map-addr').addEventListener('keydown',e=>{if(e.key==='Enter')doMapSearch();});
