@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="相場検索">
+<meta name="theme-color" content="#0f1e35">
+<title>ASSOCIA | 相場検索</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500&family=Noto+Serif+JP:wght@400;500&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#f8f7f4;--white:#fff;--navy:#0f1e35;--navy2:#162840;
+  --gold:#b8924a;--gold2:#d4af6e;--gold-pale:#faf5e8;
+  --text:#1a1a1a;--muted:#6b6b6b;--border:#e8e4dc;--border2:#f0ece4;
+  --red:#c0392b;--green:#27ae60;--blue:#2471a3;
+  --shadow:0 2px 16px rgba(15,30,53,.08);--r:8px;--r-sm:5px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Noto Sans JP',sans-serif;font-weight:300;color:var(--text);background:var(--bg);-webkit-tap-highlight-color:transparent;-webkit-font-smoothing:antialiased}
+
+.hdr{background:var(--navy);padding:12px 14px 10px;position:sticky;top:0;z-index:200}
+.hdr-top{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.logo{font-family:'Noto Serif JP',serif;font-size:14px;color:#fff;letter-spacing:.12em}
+.logo span{color:var(--gold2)}
+.hdr-title{font-size:11px;color:rgba(255,255,255,.45);letter-spacing:.08em}
+.hdr-sp{flex:1}
+.back-btn{font-size:12px;color:rgba(255,255,255,.55);text-decoration:none;padding:4px 8px;border:1px solid rgba(255,255,255,.2);border-radius:var(--r-sm)}
+.search-row{display:flex;gap:8px;margin-bottom:8px}
+.s-input{flex:1;padding:10px 13px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:var(--r-sm);font-size:15px;color:#fff;font-family:'Noto Sans JP',sans-serif;outline:none;transition:border-color .15s}
+.s-input::placeholder{color:rgba(255,255,255,.35)}
+.s-input:focus{border-color:var(--gold2);background:rgba(255,255,255,.15)}
+.s-btn{padding:10px 18px;background:var(--gold);color:var(--navy);border:none;border-radius:var(--r-sm);font-size:13px;font-weight:500;font-family:'Noto Sans JP',sans-serif;cursor:pointer;white-space:nowrap;transition:background .15s;min-width:60px}
+.s-btn:hover{background:var(--gold2)}
+.s-btn:disabled{opacity:.5;cursor:default}
+.year-row{display:flex;align-items:center;gap:6px}
+.yr-label{font-size:11px;color:rgba(255,255,255,.45);letter-spacing:.06em}
+.yr-select{padding:4px 24px 4px 8px;border:1px solid rgba(255,255,255,.2);border-radius:var(--r-sm);background:rgba(255,255,255,.1) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 6px center;-webkit-appearance:none;outline:none;font-size:12px;color:rgba(255,255,255,.85);font-family:'Noto Sans JP',sans-serif;cursor:pointer}
+.yr-select option{background:#0f1e35}
+
+.quick-chips{display:flex;gap:6px;overflow-x:auto;padding:8px 14px;background:var(--navy2);-webkit-overflow-scrolling:touch}
+.quick-chips::-webkit-scrollbar{display:none}
+.qchip{padding:4px 12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:20px;font-size:12px;color:rgba(255,255,255,.65);cursor:pointer;white-space:nowrap;font-family:'Noto Sans JP',sans-serif;transition:all .15s;flex-shrink:0}
+.qchip:hover,.qchip:active{background:var(--gold);color:var(--navy);border-color:var(--gold)}
+
+.stat-strip{background:var(--white);border-bottom:1px solid var(--border);padding:8px 14px;display:none;gap:16px;align-items:center;overflow-x:auto}
+.stat-strip.show{display:flex}
+.sstat{text-align:center;flex-shrink:0}
+.sstat-val{font-family:'DM Mono',monospace;font-size:15px;color:var(--navy)}
+.sstat-lbl{font-size:10px;color:var(--muted);margin-top:1px;letter-spacing:.04em}
+.sstat-div{width:1px;height:28px;background:var(--border);flex-shrink:0}
+
+.filter-bar{background:var(--white);border-bottom:2px solid var(--border);padding:10px 14px;display:none}
+.filter-bar.show{display:block}
+.f-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.f-label{font-size:11px;color:var(--muted);letter-spacing:.06em;white-space:nowrap;min-width:40px}
+.f-chips{display:flex;gap:5px;flex-wrap:wrap}
+.fchip{padding:4px 11px;border:1px solid var(--border);border-radius:20px;font-size:12px;color:var(--muted);background:var(--white);cursor:pointer;white-space:nowrap;font-family:'Noto Sans JP',sans-serif;transition:all .15s}
+.fchip.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+
+.sub-filter{background:#fafaf8;border-bottom:1px solid var(--border);padding:8px 14px;display:none;align-items:center;gap:8px;flex-wrap:wrap}
+.sub-filter.show{display:flex}
+.sf-label{font-size:11px;color:var(--muted);white-space:nowrap}
+.sf-select{padding:4px 22px 4px 8px;border:1px solid var(--border);border-radius:var(--r-sm);font-size:12px;background:var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 24 24' fill='none' stroke='%236b6b6b' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 6px center;-webkit-appearance:none;outline:none;font-family:'Noto Sans JP',sans-serif;cursor:pointer;color:var(--text)}
+.sf-input{padding:4px 8px;border:1px solid var(--border);border-radius:var(--r-sm);font-size:12px;font-family:'Noto Sans JP',sans-serif;background:var(--bg);outline:none;width:72px;color:var(--text)}
+.sf-input:focus{border-color:var(--gold);background:#fff}
+.sf-sep{font-size:12px;color:var(--muted)}
+
+.sort-bar{background:var(--white);border-bottom:1px solid var(--border);padding:7px 14px;display:none;align-items:center;gap:8px;flex-wrap:wrap}
+.sort-bar.show{display:flex}
+.sort-label{font-size:11px;color:var(--muted);white-space:nowrap}
+.sort-select{padding:4px 22px 4px 8px;border:1px solid var(--border);border-radius:var(--r-sm);font-size:12px;background:var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 24 24' fill='none' stroke='%236b6b6b' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 6px center;-webkit-appearance:none;outline:none;font-family:'Noto Sans JP',sans-serif;cursor:pointer;color:var(--text)}
+.r-count{margin-left:auto;font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);white-space:nowrap}
+
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:80px}
+table{width:100%;border-collapse:collapse;font-size:12px;min-width:660px}
+thead th{background:var(--navy);color:rgba(255,255,255,.8);font-size:10px;font-weight:400;letter-spacing:.06em;padding:8px 10px;text-align:left;white-space:nowrap}
+thead th.r{text-align:right}
+tbody tr{border-bottom:1px solid var(--border2);transition:background .1s}
+tbody tr:hover{background:var(--gold-pale)}
+tbody td{padding:9px 10px;vertical-align:middle;line-height:1.4}
+tbody td.r{text-align:right;font-family:'DM Mono',monospace}
+.badge{display:inline-block;font-size:10px;padding:2px 7px;border-radius:3px;font-weight:500;white-space:nowrap}
+.b-mansion{background:#eaf4fb;color:var(--blue)}
+.b-land{background:#eafaf1;color:var(--green)}
+.b-house{background:#fef9e7;color:#d68910}
+.b-other{background:#f4f6f7;color:var(--muted)}
+.price-val{color:var(--red);font-weight:500}
+.muted-sm{color:var(--muted);font-size:11px}
+.send-btn{padding:4px 10px;background:var(--gold-pale);border:1px solid rgba(184,146,74,.3);border-radius:4px;font-size:11px;color:var(--gold);cursor:pointer;white-space:nowrap;font-family:'Noto Sans JP',sans-serif;transition:all .15s}
+.send-btn:hover{background:var(--gold);color:var(--navy)}
+.send-btn.sent{background:#eafaf1;border-color:#a9dfbf;color:var(--green)}
+
+.status{text-align:center;padding:60px 20px;color:var(--muted)}
+.status-icon{font-size:44px;margin-bottom:14px}
+.status-msg{font-size:14px;line-height:1.9}
+.spinner{width:34px;height:34px;border:3px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.send-all{position:fixed;bottom:0;left:0;right:0;background:var(--navy);padding:12px 16px;padding-bottom:calc(12px + env(safe-area-inset-bottom));display:none;align-items:center;gap:12px;z-index:300;box-shadow:0 -4px 20px rgba(15,30,53,.2)}
+.send-all.show{display:flex}
+.sa-count{font-size:13px;color:rgba(255,255,255,.7);flex:1}
+.sa-btn{padding:10px 20px;background:var(--gold);color:var(--navy);border:none;border-radius:var(--r-sm);font-size:13px;font-weight:500;font-family:'Noto Sans JP',sans-serif;cursor:pointer}
+
+.toast{position:fixed;bottom:72px;left:50%;transform:translateX(-50%) translateY(8px);background:var(--navy);color:#fff;padding:9px 18px;border-radius:20px;font-size:13px;box-shadow:var(--shadow);opacity:0;transition:opacity .3s,transform .3s;z-index:999;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-top">
+    <div class="logo">ASSOCIA<span>.</span></div>
+    <div class="hdr-title">相場検索</div>
+    <div class="hdr-sp"></div>
+    <a href="associa-app.html" class="back-btn">← ツールへ</a>
+  </div>
+  <div class="search-row">
+    <input class="s-input" id="s-input"
+      placeholder="区名＋町名（例：阿倍野区相生通）"
+      autocomplete="off"
+      onkeydown="if(event.key==='Enter')doSearch()">
+    <button class="s-btn" id="s-btn" onclick="doSearch()">検索</button>
+  </div>
+  <div class="year-row">
+    <div class="yr-label">取引年</div>
+    <select class="yr-select" id="yr-from">
+      <option value="2022">2022年</option>
+      <option value="2023">2023年</option>
+      <option value="2024" selected>2024年</option>
+      <option value="2025">2025年</option>
+    </select>
+    <span style="color:rgba(255,255,255,.4);font-size:12px">〜</span>
+    <select class="yr-select" id="yr-to">
+      <option value="2022">2022年</option>
+      <option value="2023">2023年</option>
+      <option value="2024">2024年</option>
+      <option value="2025" selected>2025年</option>
+    </select>
+  </div>
+</div>
+
+<div class="quick-chips">
+  <div class="qchip" onclick="qs('阿倍野区相生通')">相生通</div>
+  <div class="qchip" onclick="qs('阿倍野区帝塚山')">帝塚山</div>
+  <div class="qchip" onclick="qs('阿倍野区昭和町')">昭和町</div>
+  <div class="qchip" onclick="qs('阿倍野区阿倍野筋')">阿倍野筋</div>
+  <div class="qchip" onclick="qs('天王寺区上本町')">上本町</div>
+  <div class="qchip" onclick="qs('天王寺区四天王寺')">四天王寺</div>
+  <div class="qchip" onclick="qs('住吉区帝塚山西')">帝塚山西</div>
+  <div class="qchip" onclick="qs('住吉区長居')">長居</div>
+  <div class="qchip" onclick="qs('東住吉区桑津')">桑津</div>
+  <div class="qchip" onclick="qs('中央区南船場')">南船場</div>
+</div>
+
+<!-- 集計 -->
+<div class="stat-strip" id="stat-strip">
+  <div class="sstat"><div class="sstat-val" id="st-count">—</div><div class="sstat-lbl">件数</div></div>
+  <div class="sstat-div"></div>
+  <div class="sstat"><div class="sstat-val" id="st-avg">—</div><div class="sstat-lbl">平均価格</div></div>
+  <div class="sstat-div"></div>
+  <div class="sstat"><div class="sstat-val" id="st-med">—</div><div class="sstat-lbl">中央値</div></div>
+  <div class="sstat-div"></div>
+  <div class="sstat"><div class="sstat-val" id="st-tanka">—</div><div class="sstat-lbl">平均㎡単価</div></div>
+</div>
+
+<!-- 種別フィルタ -->
+<div class="filter-bar" id="filter-bar">
+  <div class="f-row">
+    <div class="f-label">種別</div>
+    <div class="f-chips">
+      <div class="fchip on" data-t="all"     onclick="setType(this,'all')">すべて</div>
+      <div class="fchip"    data-t="mansion"  onclick="setType(this,'mansion')">マンション</div>
+      <div class="fchip"    data-t="land"     onclick="setType(this,'land')">土地</div>
+      <div class="fchip"    data-t="house"    onclick="setType(this,'house')">一戸建て</div>
+    </div>
+  </div>
+</div>
+
+<!-- 土地専用絞り込み -->
+<div class="sub-filter" id="sf-land">
+  <div class="sf-label">面積</div>
+  <input class="sf-input" id="a-min" placeholder="㎡〜" type="number" oninput="applyFilters()">
+  <span class="sf-sep">〜</span>
+  <input class="sf-input" id="a-max" placeholder="〜㎡" type="number" oninput="applyFilters()">
+  <div class="sf-label" style="margin-left:6px">容積率</div>
+  <select class="sf-select" id="yoseki" onchange="applyFilters()">
+    <option value="">すべて</option>
+    <option value="80">〜80%</option>
+    <option value="100">〜100%</option>
+    <option value="150">〜150%</option>
+    <option value="200">〜200%</option>
+    <option value="300">〜300%</option>
+    <option value="400">〜400%</option>
+    <option value="500up">500%〜</option>
+  </select>
+  <div class="sf-label" style="margin-left:6px">建蔽率</div>
+  <select class="sf-select" id="kenpei" onchange="applyFilters()">
+    <option value="">すべて</option>
+    <option value="40">〜40%</option>
+    <option value="50">〜50%</option>
+    <option value="60">〜60%</option>
+    <option value="70">〜70%</option>
+    <option value="80up">80%〜</option>
+  </select>
+</div>
+
+<!-- マンション専用絞り込み -->
+<div class="sub-filter" id="sf-mansion">
+  <div class="sf-label">間取り</div>
+  <select class="sf-select" id="madori" onchange="applyFilters()">
+    <option value="">すべて</option>
+    <option value="1R">1R</option>
+    <option value="1K">1K</option>
+    <option value="1DK">1DK</option>
+    <option value="1LDK">1LDK</option>
+    <option value="2K">2K</option>
+    <option value="2DK">2DK</option>
+    <option value="2LDK">2LDK</option>
+    <option value="3DK">3DK</option>
+    <option value="3LDK">3LDK</option>
+    <option value="4LDK以上">4LDK〜</option>
+  </select>
+  <div class="sf-label" style="margin-left:6px">専有面積</div>
+  <input class="sf-input" id="ex-min" placeholder="㎡〜" type="number" oninput="applyFilters()">
+  <span class="sf-sep">〜</span>
+  <input class="sf-input" id="ex-max" placeholder="〜㎡" type="number" oninput="applyFilters()">
+  <div class="sf-label" style="margin-left:6px">築年</div>
+  <input class="sf-input" id="by-min" placeholder="年〜" type="number" style="width:58px" oninput="applyFilters()">
+  <span class="sf-sep">〜</span>
+  <input class="sf-input" id="by-max" placeholder="〜年" type="number" style="width:58px" oninput="applyFilters()">
+</div>
+
+<!-- ソート -->
+<div class="sort-bar" id="sort-bar">
+  <div class="sort-label">並び替え</div>
+  <select class="sort-select" id="sort-sel" onchange="renderTable()">
+    <option value="period_desc">時期（新→古）</option>
+    <option value="price_desc">価格（高→安）</option>
+    <option value="price_asc">価格（安→高）</option>
+    <option value="tanka_desc">㎡単価（高→安）</option>
+    <option value="tanka_asc">㎡単価（安→高）</option>
+    <option value="area_desc">面積（広→狭）</option>
+    <option value="area_asc">面積（狭→広）</option>
+    <option value="age_asc">築年（新しい順）</option>
+  </select>
+  <div class="r-count" id="r-count"></div>
+</div>
+
+<div id="main">
+  <div class="status">
+    <div class="status-icon">🏙️</div>
+    <div class="status-msg">区名＋町名を入力して検索<br><span style="font-size:12px;color:#aaa">例：阿倍野区相生通　住吉区帝塚山西</span></div>
+  </div>
+</div>
+
+<div class="send-all" id="send-all">
+  <div class="sa-count" id="sa-count">0件選択中</div>
+  <button class="sa-btn" onclick="sendAll()">査定エンジンへ送る</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const CITY_CODES = {
+  '北区':'27102','都島区':'27103','福島区':'27104','此花区':'27105',
+  '中央区':'27106','西区':'27107','港区':'27108','大正区':'27109',
+  '天王寺区':'27110','浪速区':'27111','西淀川区':'27112','淀川区':'27113',
+  '東淀川区':'27114','東成区':'27115','生野区':'27116','旭区':'27117',
+  '城東区':'27118','鶴見区':'27119','阿倍野区':'27120','住之江区':'27121',
+  '住吉区':'27122','東住吉区':'27123','平野区':'27124','西成区':'27125',
+};
+
+let allData=[], filteredData=[], currentType='all', searchKeyword='', selected=new Set();
+
+function qs(v){ document.getElementById('s-input').value=v; doSearch(); }
+
+async function doSearch(){
+  const raw = document.getElementById('s-input').value.trim();
+  if(!raw) return;
+
+  const yrFrom = parseInt(document.getElementById('yr-from').value);
+  const yrTo   = parseInt(document.getElementById('yr-to').value);
+  const {code, keyword} = resolveCode(raw);
+
+  if(!code){
+    showStatus('❓','区名から入力してください<br><span style="font-size:12px">例：阿倍野区相生通</span>');
+    return;
+  }
+
+  searchKeyword = keyword;
+  const btn = document.getElementById('s-btn');
+  btn.disabled=true; btn.textContent='…';
+  showLoading();
+
+  try {
+    const years=[];
+    for(let y=yrFrom;y<=yrTo;y++) years.push(y);
+
+    // 国交省APIの取引タイプ
+    // 1=宅地(土地と建物) 2=中古マンション等 3=土地 7=中古一戸建て
+    const typeNums=['1','2','3','7'];
+    let raw_all=[];
+
+    for(const yr of years){
+      for(const tn of typeNums){
+        try{
+          const url=`/.netlify/functions/mlit-api?endpoint=XIT001&type=${tn}&city=${code}&year=${yr}`;
+          const res=await fetch(url);
+          if(!res.ok) continue;
+          const json=await res.json();
+          raw_all=raw_all.concat(json.data||[]);
+        }catch(e){}
+      }
+    }
+
+    allData=raw_all;
+    selected.clear();
+    currentType='all';
+    document.querySelectorAll('.fchip[data-t]').forEach(b=>b.classList.remove('on'));
+    document.querySelector('.fchip[data-t="all"]').classList.add('on');
+    document.getElementById('sf-land').classList.remove('show');
+    document.getElementById('sf-mansion').classList.remove('show');
+    applyFilters();
+  } catch(e){
+    showStatus('⚠️','データ取得に失敗しました<br>しばらく待ってから再試行してください');
+  } finally {
+    btn.disabled=false; btn.textContent='検索';
+  }
+}
+
+function resolveCode(raw){
+  const s=raw.replace(/^大阪市/,'');
+  for(const [ward,code] of Object.entries(CITY_CODES)){
+    if(s.startsWith(ward)){
+      return {code, keyword:s.replace(ward,'').trim()};
+    }
+  }
+  return {code:null, keyword:''};
+}
+
+function setType(btn,type){
+  currentType=type;
+  document.querySelectorAll('.fchip[data-t]').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('sf-land').classList.toggle('show',type==='land');
+  document.getElementById('sf-mansion').classList.toggle('show',type==='mansion');
+  if(type==='land') document.getElementById('sort-sel').value='area_asc';
+  if(type==='mansion') document.getElementById('sort-sel').value='price_asc';
+  applyFilters();
+}
+
+function applyFilters(){
+  let data=[...allData];
+
+  // 町名絞り込み（Municipality と DistrictName 両方チェック）
+  if(searchKeyword){
+    const kw=norm(searchKeyword);
+    data=data.filter(d=>norm(d.Municipality||'').includes(kw)||norm(d.DistrictName||'').includes(kw));
+  }
+
+  // 種別
+  if(currentType==='mansion'){
+    data=data.filter(d=>/マンション/.test(d.Type||''));
+  } else if(currentType==='land'){
+    data=data.filter(d=>/^土地$/.test((d.Type||'').trim()));
+  } else if(currentType==='house'){
+    data=data.filter(d=>/戸建|一戸/.test(d.Type||''));
+  }
+
+  // 土地絞り込み
+  if(currentType==='land'){
+    const aMin=nf('a-min'),aMax=nf('a-max');
+    if(aMin) data=data.filter(d=>toN(d.Area)>=aMin);
+    if(aMax) data=data.filter(d=>toN(d.Area)<=aMax);
+    const yo=document.getElementById('yoseki').value;
+    if(yo){
+      if(yo==='500up') data=data.filter(d=>toN(d.FloorAreaRatio)>=500);
+      else { const yv=parseInt(yo); data=data.filter(d=>{const v=toN(d.FloorAreaRatio);return v>0&&v<=yv;}); }
+    }
+    const ke=document.getElementById('kenpei').value;
+    if(ke){
+      if(ke==='80up') data=data.filter(d=>toN(d.CoverageRatio)>=80);
+      else { const kv=parseInt(ke); data=data.filter(d=>{const v=toN(d.CoverageRatio);return v>0&&v<=kv;}); }
+    }
+  }
+
+  // マンション絞り込み
+  if(currentType==='mansion'){
+    const mad=document.getElementById('madori').value;
+    if(mad) data=data.filter(d=>d.FloorPlan===mad);
+    const exMin=nf('ex-min'),exMax=nf('ex-max');
+    if(exMin) data=data.filter(d=>toN(d.Area)>=exMin);
+    if(exMax) data=data.filter(d=>toN(d.Area)<=exMax);
+    const byMin=nf('by-min'),byMax=nf('by-max');
+    if(byMin) data=data.filter(d=>bYear(d)>=byMin);
+    if(byMax) data=data.filter(d=>{const y=bYear(d);return y>0&&y<=byMax;});
+  }
+
+  filteredData=data;
+  selected.clear();
+  renderTable();
+  updateStats(data);
+}
+
+function renderTable(){
+  if(allData.length===0) return;
+  const sort=document.getElementById('sort-sel').value;
+  let data=[...filteredData];
+
+  data.sort((a,b)=>{
+    const pa=prc(a),pb=prc(b);
+    const ta=tnk(a),tb=tnk(b);
+    const aa=toN(a.Area),ab=toN(b.Area);
+    const ya=pYear(a),yb=pYear(b);
+    const bya=bYear(a)||9999,byb=bYear(b)||9999;
+    switch(sort){
+      case 'price_desc': return pb-pa;
+      case 'price_asc':  return pa-pb;
+      case 'tanka_desc': return tb-ta;
+      case 'tanka_asc':  return ta-tb;
+      case 'area_desc':  return ab-aa;
+      case 'area_asc':   return aa-ab;
+      case 'age_asc':    return bya-byb;
+      default:           return yb-ya;
+    }
+  });
+
+  document.getElementById('r-count').textContent=`${data.length}件`;
+  document.getElementById('filter-bar').classList.add('show');
+  document.getElementById('sort-bar').classList.add('show');
+  document.getElementById('stat-strip').classList.add('show');
+
+  if(data.length===0){
+    document.getElementById('main').innerHTML=`<div class="status"><div class="status-icon">🔍</div><div class="status-msg">条件に合う事例がありません<br>絞り込みを変更してください</div></div>`;
+    return;
+  }
+
+  const isL=currentType==='land', isM=currentType==='mansion';
+
+  let th=`<thead><tr><th>時期</th><th>種別</th><th>地区名</th>`;
+  if(isM){
+    th+=`<th>間取り</th><th class="r">専有面積</th><th class="r">㎡単価</th><th>築年（築年数）</th>`;
+  } else if(isL){
+    th+=`<th class="r">面積</th><th class="r">㎡単価</th><th class="r">建蔽率</th><th class="r">容積率</th><th>接道幅</th><th>用途地域</th>`;
+  } else {
+    th+=`<th class="r">面積</th><th>間取り</th><th class="r">㎡単価</th><th>築年（築年数）</th>`;
+  }
+  th+=`<th class="r">取引価格</th><th></th></tr></thead>`;
+
+  let rows='';
+  data.forEach((d,i)=>{
+    const sent=selected.has(i);
+    const prStr=fPrice(prc(d));
+    const tkStr=fTanka(tnk(d));
+    const area=d.Area?`${d.Area}㎡`:'—';
+    const munic=d.Municipality||d.DistrictName||'—';
+    const mad=d.FloorPlan||'—';
+    const yo=d.FloorAreaRatio?`${d.FloorAreaRatio}%`:'—';
+    const ke=d.CoverageRatio?`${d.CoverageRatio}%`:'—';
+    const ft=d.Frontage?`${d.Frontage}m`:'—';
+    const yt=d.CityPlanning||'—';
+    const by=fBYear(d.BuildingYear);
+    const period=fPeriod(d.Period);
+    const badge=mkBadge(d.Type||'');
+
+    let extra='';
+    if(isM){
+      extra=`<td>${mad}</td><td class="r">${area}</td><td class="r">${tkStr}</td><td class="muted-sm">${by}</td>`;
+    } else if(isL){
+      extra=`<td class="r">${area}</td><td class="r">${tkStr}</td><td class="r">${ke}</td><td class="r">${yo}</td><td>${ft}</td><td class="muted-sm">${yt}</td>`;
+    } else {
+      extra=`<td class="r">${area}</td><td>${mad}</td><td class="r">${tkStr}</td><td class="muted-sm">${by}</td>`;
+    }
+
+    rows+=`<tr>
+      <td class="muted-sm">${period}</td>
+      <td>${badge}</td>
+      <td>${munic}</td>
+      ${extra}
+      <td class="r price-val">${prStr}</td>
+      <td><button class="send-btn${sent?' sent':''}" onclick="toggleRow(${i},this)">${sent?'✓済':'査定へ'}</button></td>
+    </tr>`;
+  });
+
+  document.getElementById('main').innerHTML=`<div class="table-wrap"><table>${th}<tbody>${rows}</tbody></table></div>`;
+  updateSendBar();
+}
+
+function updateStats(data){
+  const prices=data.map(d=>prc(d)).filter(v=>v>0);
+  const tankas=data.map(d=>tnk(d)).filter(v=>v>0);
+  document.getElementById('st-count').textContent=prices.length?`${prices.length}件`:'—';
+  if(!prices.length){
+    ['st-avg','st-med','st-tanka'].forEach(id=>document.getElementById(id).textContent='—');
+    return;
+  }
+  const avg=prices.reduce((s,v)=>s+v,0)/prices.length;
+  const med=[...prices].sort((a,b)=>a-b)[Math.floor(prices.length/2)];
+  const avgT=tankas.length?tankas.reduce((s,v)=>s+v,0)/tankas.length:0;
+  document.getElementById('st-avg').textContent=fPrice(avg);
+  document.getElementById('st-med').textContent=fPrice(med);
+  document.getElementById('st-tanka').textContent=avgT?fTanka(avgT):'—';
+}
+
+function toggleRow(idx,btn){
+  if(selected.has(idx)){selected.delete(idx);btn.textContent='査定へ';btn.classList.remove('sent');}
+  else{selected.add(idx);btn.textContent='✓済';btn.classList.add('sent');}
+  updateSendBar();
+}
+function updateSendBar(){
+  document.getElementById('sa-count').textContent=`${selected.size}件選択中`;
+  document.getElementById('send-all').classList.toggle('show',selected.size>0);
+}
+function sendAll(){
+  const items=[...selected].map(i=>filteredData[i]);
+  const payload=items.map(d=>({
+    name:d.Municipality||d.DistrictName||'—',
+    price:Math.round(prc(d)/10000),
+    area:toN(d.Area),
+    year:bYear(d),
+    tanka:Math.round(tnk(d)/10000),
+    madori:d.FloorPlan||'',
+  }));
+  try{
+    localStorage.setItem('associa_satei_import',JSON.stringify(payload));
+    showToast(`${items.length}件を査定エンジンに送りました`);
+    setTimeout(()=>{window.location.href='associa-app.html#satei';},1000);
+  }catch(e){showToast('送信に失敗しました');}
+}
+
+// ユーティリティ
+const norm  = s=>s.replace(/\s|　/g,'');
+const toN   = v=>parseFloat(v)||0;
+const nf    = id=>{const v=parseFloat(document.getElementById(id).value);return isNaN(v)?0:v;};
+const prc   = d=>parseInt(d.TradePrice||'0')||0;
+const tnk   = d=>{const p=prc(d),a=toN(d.Area);return(p&&a)?p/a:0;};
+const pYear = d=>{const m=(d.Period||'').match(/(\d{4})/);return m?parseInt(m[1]):0;};
+const bYear = d=>{const m=(d.BuildingYear||'').match(/(\d{4})/);return m?parseInt(m[1]):0;};
+
+function fPrice(v){
+  if(!v) return '—';
+  if(v>=100000000) return `${(v/100000000).toFixed(1)}億円`;
+  return `${Math.round(v/10000).toLocaleString()}万円`;
+}
+function fTanka(v){
+  if(!v) return '—';
+  return `${Math.round(v/10000).toLocaleString()}万/㎡`;
+}
+function fPeriod(p){
+  if(!p) return '—';
+  return p.replace('年第','年Q').replace('四半期','').replace(/[１２３４]/g,c=>'1234'['１２３４'.indexOf(c)]);
+}
+function fBYear(y){
+  if(!y||y==='不明') return '—';
+  const m=y.match(/(\d{4})/);
+  if(!m) return y;
+  const yr=parseInt(m[1]);
+  return `${yr}年（${new Date().getFullYear()-yr}年）`;
+}
+function mkBadge(type){
+  if(/マンション/.test(type)) return `<span class="badge b-mansion">マンション</span>`;
+  if(/^土地$/.test(type.trim())) return `<span class="badge b-land">土地</span>`;
+  if(/戸建|一戸/.test(type))   return `<span class="badge b-house">一戸建て</span>`;
+  return `<span class="badge b-other">${type.slice(0,5)}</span>`;
+}
+function showLoading(){
+  document.getElementById('main').innerHTML=`<div class="status"><div class="spinner"></div><div class="status-msg">国交省データを取得中…</div></div>`;
+  ['filter-bar','sort-bar','stat-strip'].forEach(id=>document.getElementById(id).classList.remove('show'));
+}
+function showStatus(icon,msg){
+  document.getElementById('main').innerHTML=`<div class="status"><div class="status-icon">${icon}</div><div class="status-msg">${msg}</div></div>`;
+  ['filter-bar','sort-bar','stat-strip'].forEach(id=>document.getElementById(id).classList.remove('show'));
+}
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+</script>
+</body>
+</html>
