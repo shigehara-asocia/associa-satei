@@ -1487,12 +1487,22 @@ async function doMapSearch() {
     L.marker([lat,lng],{icon:cIcon}).addTo(map);
     const periodFrom = document.getElementById('period-from').value;
     const periodTo = document.getElementById('period-to').value;
+    const addrStr = addr.replace(/\s/g,'');
     const rawData = await fetchMLITDataRange(lat, lng, addr, periodFrom, periodTo);
     if (rawData.length > 0) {
       allRawData = convertToTableData(rawData);
+
+      // 入力住所に町名が含まれる場合は自動で絞り込み
+      const townMatch = addrStr.match(/[区][^\d\s]*?([^\d\s一二三四五六七八九十百千]+[通町丁目])/);
+      if (townMatch && townMatch[1]) {
+        currentFilter = townMatch[1];
+        if(document.getElementById('table-filter')) document.getElementById('table-filter').value = townMatch[1];
+        showToast(`「${townMatch[1]}」で自動絞り込み中`);
+      }
+
       applyFilterSort();
-      renderMapStats(allRawData);
-      showToast(`✓ ${allRawData.length}件を表示`);
+      renderMapStats(filteredData.length > 0 ? filteredData : allRawData);
+      showToast(`✓ ${filteredData.length}件を表示（全${allRawData.length}件中）`);
     } else {
       document.getElementById('result-table-body').innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px;">データが見つかりませんでした。別のエリアや期間で試してください。</div>';
       showToast('⚠ データが見つかりません');
@@ -1881,13 +1891,14 @@ function applyFilterSort() {
 
   // テキスト絞り込み
   if (currentFilter) {
-    const q = currentFilter.toLowerCase();
+    const q = currentFilter;
     data = data.filter(p =>
       (p.district||'').includes(q) ||
       (p.typeName||'').includes(q) ||
       (p.floorPlan||'').includes(q) ||
       (p.period||'').includes(q) ||
-      (p.structure||'').includes(q)
+      (p.structure||'').includes(q) ||
+      (p.buildYear||'').includes(q)
     );
   }
 
