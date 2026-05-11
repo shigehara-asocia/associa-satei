@@ -1195,90 +1195,85 @@ async function getCityCode(addr) {
 
 // 国交省APIから成約事例を取得
 async function fetchMLITData(lat, lng, type, addr) {
-  // 緯度経度から都道府県・市区町村コードを推定
-  // まずNominatimで住所を逆ジオコーディング
-  let prefCode = '27'; // デフォルト大阪
+  let prefCode = '27'; // デフォルト大阪府
   let cityCode = '';
 
-  try {
-    const revRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=ja`,{headers:{'User-Agent':'AssociaApp/1.0'}});
-    const revData = await revRes.json();
-    const addr = revData.address || {};
+  // まず入力住所から直接判定（最優先）
+  const addrStr = (addr || '').replace(/\s/g, '');
+  const cityMap = {
+    '阿倍野': '27109',
+    '北区': '27102', '梅田': '27102',
+    '中央区': '27128', '淀屋橋': '27128', '北浜': '27128', '心斎橋': '27128',
+    '天王寺': '27111',
+    '住吉区': '27120', '住吉': '27120',
+    '浪速': '27107', '難波': '27107', 'なんば': '27107',
+    '西区': '27104',
+    '福島': '27103',
+    '此花': '27105',
+    '港区': '27106',
+    '大正': '27108',
+    '東成': '27110',
+    '生野': '27112',
+    '旭区': '27113',
+    '城東': '27114',
+    '鶴見': '27115',
+    '住之江': '27116',
+    '平野': '27117',
+    '西成': '27118',
+    '淀川': '27119',
+    '東淀川': '27127',
+    '東住吉': '27121',
+    '西淀川': '27122',
+    '都島': '27123',
+    '豊中': '27203',
+    '吹田': '27205',
+    '守口': '27208',
+    '枚方': '27210',
+    '茨木': '27211',
+    '八尾': '27212',
+    '堺': '27201',
+  };
 
-    // 都道府県コード特定
-    const prefName = addr.state || '';
-    for (const [name, code] of Object.entries(PREF_CODES)) {
-      if (prefName.includes(name.replace('都','').replace('道','').replace('府','').replace('県',''))) {
-        prefCode = code; break;
+  for (const [key, code] of Object.entries(cityMap)) {
+    if (addrStr.includes(key)) {
+      cityCode = code;
+      prefCode = code.substring(0, 2);
+      console.log(`住所から市区町村コード特定: "${key}" → ${code}`);
+      break;
+    }
+  }
+
+  // 住所から判定できなかった場合のみ逆ジオコーディング
+  if (!cityCode) {
+    try {
+      const revRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=ja`,{headers:{'User-Agent':'AssociaApp/1.0'}});
+      const revData = await revRes.json();
+      const revAddr = revData.address || {};
+      const prefName = revAddr.state || '';
+      for (const [name, code] of Object.entries(PREF_CODES)) {
+        if (prefName.includes(name.replace('都','').replace('道','').replace('府','').replace('県',''))) {
+          prefCode = code; break;
+        }
       }
-    }
-
-    // 市区町村コードを国交省APIで取得
-    const cityRes = await fetch(`${MLIT_PROXY_URL}?endpoint=XIT002&area=${prefCode}`);
-    const cityData = await cityRes.json();
-    const cityName = addr.city || addr.county || addr.town || '';
-
-    if (cityData.data) {
-      const matched = cityData.data.find(c =>
-        cityName.includes(c.name) || c.name.includes(cityName.replace('市','').replace('区','').replace('町',''))
-      );
-      if (matched) cityCode = matched.id;
-    }
-  } catch(e) {
-    console.log('逆ジオコーディングエラー:', e);
+      // 市区町村コードをAPIで取得
+      const cityRes = await fetch(`${MLIT_PROXY_URL}?endpoint=XIT002&area=${prefCode}`);
+      const cityData = await cityRes.json();
+      const cityName = revAddr.city || revAddr.county || revAddr.town || '';
+      if (cityData.data) {
+        const matched = cityData.data.find(c =>
+          cityName.includes(c.name) || c.name.includes(cityName.replace('市','').replace('区','').replace('町',''))
+        );
+        if (matched) cityCode = matched.id;
+      }
+    } catch(e) { console.log('逆ジオコーディングエラー:', e); }
   }
 
   if (!cityCode) {
-    // 入力住所から直接区名を判定
-    const addrStr = (addr || '').replace(/\s/g, '');
-    const cityMap = {
-      '阿倍野': '27109',
-      '北区': '27102', '梅田': '27102',
-      '中央区': '27128', '淀屋橋': '27128', '北浜': '27128', '心斎橋': '27128',
-      '天王寺': '27111',
-      '住吉': '27120',
-      '浪速': '27107', '難波': '27107', 'なんば': '27107',
-      '西区': '27104',
-      '福島': '27103',
-      '此花': '27105',
-      '港区': '27106',
-      '大正': '27108',
-      '東成': '27110',
-      '生野': '27112',
-      '旭区': '27113',
-      '城東': '27114',
-      '鶴見': '27115',
-      '住之江': '27116',
-      '平野': '27117',
-      '西成': '27118',
-      '淀川': '27119',
-      '東淀川': '27120',
-      '東住吉': '27121',
-      '西淀川': '27122',
-      '都島': '27123',
-      '東区': '27124',
-      '西区': '27104',
-      '南区': '27125',
-      '豊中': '27203',
-      '吹田': '27205',
-      '守口': '27208',
-      '枚方': '27210',
-      '茨木': '27211',
-      '八尾': '27212',
-      '堺市': '27201',
-    };
-
-    for (const [key, code] of Object.entries(cityMap)) {
-      if (addrStr.includes(key)) {
-        cityCode = code;
-        console.log(`住所から市区町村コード特定: ${key} → ${code}`);
-        break;
-      }
-    }
-
-    if (!cityCode) cityCode = '27128'; // デフォルト：大阪市中央区
+    cityCode = '27128'; // デフォルト：大阪市中央区
+    console.log('デフォルト市区町村コードを使用:', cityCode);
   }
 
+  console.log('使用する市区町村コード:', cityCode);
   // 現在の年と期間（直近4四半期）
   const now = new Date();
   const year = now.getFullYear();
