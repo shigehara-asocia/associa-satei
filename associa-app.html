@@ -1280,19 +1280,17 @@ async function fetchMLITData(lat, lng, type, addr) {
   const results = [];
 
   // 直近2年分のデータを取得
-  // 国交省APIのtimeFromは「年西暦4桁+四半期1桁」例：20241=2024年第1四半期
+  // 国交省APIは year と quarter を別々に指定する
   for (let y = year - 1; y >= year - 2; y--) {
     for (let q = 4; q >= 1; q--) {
       try {
-        const timeFrom = `${y}${q}`;
-        const timeTo = `${y}${q}`;
-        let url = `${MLIT_PROXY_URL}?endpoint=XIT001&area=${prefCode}&city=${cityCode}&timeFrom=${timeFrom}&timeTo=${timeTo}&language=ja`;
+        let url = `${MLIT_PROXY_URL}?endpoint=XIT001&year=${y}&quarter=${q}&area=${prefCode}&city=${cityCode}&language=ja`;
 
         console.log('API呼び出し:', url);
         const res = await fetch(url);
         if (!res.ok) { console.log('APIエラー:', res.status); continue; }
         const data = await res.json();
-        console.log(`${timeFrom} レスポンス:`, data);
+        console.log(`${y}年第${q}四半期 レスポンス件数:`, data.data ? data.data.length : 0);
 
         if (data.data && data.data.length > 0) {
           results.push(...data.data);
