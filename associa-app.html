@@ -1073,7 +1073,7 @@ function switchTab(tab) {
 }
 
 // ===== MAP =====
-let map, markers = [], circleLayer = null, allProps = [], activeFilter = 'all', searchRadius = 1000;
+let map, markers = [], circleLayer = null, allProps = [], activeFilter = 'all', searchRadius = 2000;
 let caseIdx = 0, listIdx = 0;
 
 function initMap() {
@@ -1100,11 +1100,49 @@ function setRadiusFilter(el, r) {
   searchRadius = r;
 }
 
+// 住所を段階的に短くして検索（番地→丁目→町名→区の順でフォールバック）
 async function geocode(addr) {
-  const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}&limit=1&accept-language=ja`, {headers:{'User-Agent':'AssociaApp/1.0'}});
-  const d = await res.json();
-  if (!d.length) throw new Error('住所が見つかりませんでした');
-  return { lat: parseFloat(d[0].lat), lng: parseFloat(d[0].lon) };
+  // 検索候補を段階的に生成
+  const candidates = [];
+
+  // 元の住所
+  candidates.push(addr);
+
+  // 末尾の番地（数字-数字）を除去
+  const noNum = addr.replace(/[\s　]*\d+[-－]\d+.*$/, '').replace(/[\s　]*\d+番地.*$/, '').replace(/[\s　]*\d+$/, '').trim();
+  if (noNum !== addr) candidates.push(noNum);
+
+  // 「大阪府」を付加したバージョン
+  if (!addr.includes('大阪府')) {
+    candidates.push('大阪府 ' + noNum);
+    candidates.push('大阪府 ' + addr);
+  }
+
+  // 丁目以降を除去した区レベル
+  const districtOnly = addr.replace(/[\s　]*\d+丁目.*$/, '').trim();
+  if (districtOnly !== addr && districtOnly !== noNum) candidates.push(districtOnly);
+
+  // 区レベル（例：「大阪市阿倍野区」）
+  const match = addr.match(/(.+?[都道府県].+?[市区町村])/);
+  if (match) candidates.push(match[1]);
+
+  // 順番に試す
+  for (const q of candidates) {
+    if (!q) continue;
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=3&accept-language=ja&countrycodes=jp`,
+        {headers:{'User-Agent':'AssociaApp/1.0'}}
+      );
+      const d = await res.json();
+      if (d.length > 0) {
+        console.log(`住所解決: "${q}" → ${d[0].display_name}`);
+        return { lat: parseFloat(d[0].lat), lng: parseFloat(d[0].lon), resolved: q };
+      }
+    } catch(e) { continue; }
+  }
+
+  throw new Error('住所が見つかりませんでした。都道府県から入力してみてください。');
 }
 
 function calcDist(lat1,lng1,lat2,lng2) {
@@ -1115,7 +1153,8 @@ function calcDist(lat1,lng1,lat2,lng2) {
 
 // ===== 国交省API設定 =====
 const MLIT_API_KEY = '096dda8f47f34e91abf34030efe8d5e0';
-const MLIT_API_URL = 'https://www.reinfolib.mlit.go.jp/ex-api/external/XIT001';
+// Netlify Functions経由でCORSを回避
+const MLIT_PROXY_URL = '/.netlify/functions/mlit-api';
 
 // 都道府県コード
 const PREF_CODES = {'大阪府':'27','東京都':'13','神奈川県':'14','愛知県':'23','兵庫県':'28','京都府':'26','福岡県':'40','北海道':'01'};
@@ -1141,7 +1180,7 @@ async function getCityCode(addr) {
 }
 
 // 国交省APIから成約事例を取得
-async function fetchMLITData(lat, lng, type) {
+async function fetchMLITData(lat, lng, type, addr) {
   // 緯度経度から都道府県・市区町村コードを推定
   // まずNominatimで住所を逆ジオコーディング
   let prefCode = '27'; // デフォルト大阪
@@ -1161,9 +1200,7 @@ async function fetchMLITData(lat, lng, type) {
     }
 
     // 市区町村コードを国交省APIで取得
-    const cityRes = await fetch(`https://www.reinfolib.mlit.go.jp/ex-api/external/XIT002?area=${prefCode}`,{
-      headers:{'Ocp-Apim-Subscription-Key': MLIT_API_KEY}
-    });
+    const cityRes = await fetch(`${MLIT_PROXY_URL}?endpoint=XIT002&area=${prefCode}`);
     const cityData = await cityRes.json();
     const cityName = addr.city || addr.county || addr.town || '';
 
@@ -1178,8 +1215,17 @@ async function fetchMLITData(lat, lng, type) {
   }
 
   if (!cityCode) {
-    // 大阪市中央区のデフォルト
-    cityCode = '27128';
+    // 住所から市区町村コードを推定
+    const addrStr = addr || '';
+    if (addrStr.includes('阿倍野')) cityCode = '27109'; // 大阪市阿倍野区
+    else if (addrStr.includes('北区') || addrStr.includes('梅田')) cityCode = '27102'; // 大阪市北区
+    else if (addrStr.includes('中央区') || addrStr.includes('淀屋橋') || addrStr.includes('北浜')) cityCode = '27128'; // 大阪市中央区
+    else if (addrStr.includes('天王寺')) cityCode = '27111'; // 大阪市天王寺区
+    else if (addrStr.includes('住吉')) cityCode = '27120'; // 大阪市住吉区
+    else if (addrStr.includes('浪速') || addrStr.includes('難波')) cityCode = '27107'; // 大阪市浪速区
+    else if (addrStr.includes('西区')) cityCode = '27104'; // 大阪市西区
+    else if (addrStr.includes('福島')) cityCode = '27103'; // 大阪市福島区
+    else cityCode = '27128'; // デフォルト：大阪市中央区
   }
 
   // 現在の年と期間（直近4四半期）
@@ -1192,11 +1238,9 @@ async function fetchMLITData(lat, lng, type) {
     for (let q = 4; q >= 1; q--) {
       try {
         const period = `${y}${q}`;
-        let url = `${MLIT_API_URL}?area=${prefCode}&city=${cityCode}&timeFrom=${period}&timeTo=${period}&language=ja`;
+        let url = `${MLIT_PROXY_URL}?endpoint=XIT001&area=${prefCode}&city=${cityCode}&timeFrom=${period}&timeTo=${period}&language=ja`;
 
-        const res = await fetch(url, {
-          headers: { 'Ocp-Apim-Subscription-Key': MLIT_API_KEY }
-        });
+        const res = await fetch(url);
 
         if (!res.ok) continue;
         const data = await res.json();
@@ -1288,7 +1332,7 @@ async function doMapSearch() {
     // 国交省APIからリアルデータ取得
     let props = [];
     try {
-      const rawData = await fetchMLITData(lat, lng, activeFilter);
+      const rawData = await fetchMLITData(lat, lng, activeFilter, addr);
       if (rawData.length > 0) {
         props = convertMLITData(rawData, lat, lng, activeFilter, searchRadius);
         showToast(`✓ 国交省データ ${props.length}件を表示`);
