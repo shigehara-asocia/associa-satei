@@ -1,0 +1,1635 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="ASSOCIA">
+<meta name="theme-color" content="#ffffff">
+<title>ASSOCIA | 不動産営業ツール</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;500&family=Noto+Sans+JP:wght@300;400;500&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root {
+  --bg: #f8f7f4;
+  --white: #ffffff;
+  --navy: #0f1e35;
+  --navy2: #162840;
+  --gold: #b8924a;
+  --gold2: #d4af6e;
+  --gold-pale: #faf5e8;
+  --text: #1a1a1a;
+  --muted: #6b6b6b;
+  --border: #e8e4dc;
+  --border2: #f0ece4;
+  --red: #c0392b;
+  --green: #27ae60;
+  --shadow: 0 2px 16px rgba(15,30,53,0.08);
+  --shadow-lg: 0 8px 40px rgba(15,30,53,0.12);
+  --tab-h: 72px;
+  --header-h: 56px;
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{
+  height:100%;
+  overflow:hidden;
+  font-family:'Noto Sans JP',sans-serif;
+  font-weight:300;
+  color:var(--text);
+  background:var(--bg);
+  -webkit-tap-highlight-color:transparent;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ===== SPLASH ===== */
+#splash{
+  position:fixed;inset:0;
+  background:var(--navy);
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  z-index:9999;
+  transition:opacity .5s ease, visibility .5s;
+}
+#splash.hide{opacity:0;visibility:hidden;}
+.splash-logo{
+  font-family:'Noto Serif JP',serif;
+  font-size:28px;font-weight:400;
+  color:var(--white);
+  letter-spacing:.2em;
+  margin-bottom:8px;
+  animation:fadeUp .8s ease forwards;
+}
+.splash-sub{
+  font-family:'DM Mono',monospace;
+  font-size:11px;letter-spacing:.24em;
+  color:var(--gold2);text-transform:uppercase;
+  animation:fadeUp .8s .2s ease both;
+}
+.splash-line{
+  width:40px;height:1px;
+  background:var(--gold);
+  margin:20px auto;
+  animation:fadeIn 1s .4s ease both;
+}
+
+/* ===== APP SHELL ===== */
+#app{
+  display:flex;flex-direction:column;
+  height:100%;
+  opacity:0;
+  transition:opacity .4s ease;
+}
+#app.ready{opacity:1;}
+
+/* ===== HEADER ===== */
+.app-header{
+  height:var(--header-h);
+  background:var(--white);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;
+  padding:0 20px;
+  gap:12px;
+  flex-shrink:0;
+  position:relative;
+  z-index:10;
+}
+.header-logo{
+  font-family:'Noto Serif JP',serif;
+  font-size:16px;font-weight:500;
+  color:var(--navy);
+  letter-spacing:.1em;
+}
+.header-logo span{color:var(--gold);}
+.header-spacer{flex:1;}
+.header-tel{
+  display:flex;align-items:center;gap:6px;
+  font-family:'DM Mono',monospace;
+  font-size:12px;color:var(--muted);
+  text-decoration:none;
+}
+.header-tel-icon{
+  width:28px;height:28px;
+  background:var(--gold-pale);
+  border:1px solid rgba(184,146,74,0.2);
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;
+}
+.header-date{
+  font-family:'DM Mono',monospace;
+  font-size:11px;color:var(--muted);
+  letter-spacing:.06em;
+}
+
+/* ===== CONTENT ===== */
+.app-content{
+  flex:1;
+  overflow:hidden;
+  position:relative;
+}
+.tab-panel{
+  position:absolute;inset:0;
+  overflow-y:auto;
+  opacity:0;
+  visibility:hidden;
+  transition:opacity .25s ease;
+  -webkit-overflow-scrolling:touch;
+}
+.tab-panel.active{opacity:1;visibility:visible;}
+.tab-panel::-webkit-scrollbar{width:3px;}
+.tab-panel::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+
+/* ===== TAB BAR ===== */
+.tab-bar{
+  height:var(--tab-h);
+  background:var(--white);
+  border-top:1px solid var(--border);
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  flex-shrink:0;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.tab-btn{
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  gap:4px;
+  border:none;background:transparent;
+  cursor:pointer;
+  padding:8px 4px;
+  transition:all .15s;
+  position:relative;
+}
+.tab-btn::before{
+  content:'';
+  position:absolute;top:0;left:20%;right:20%;
+  height:2px;background:var(--gold);
+  transform:scaleX(0);
+  transition:transform .2s ease;
+  border-radius:0 0 2px 2px;
+}
+.tab-btn.active::before{transform:scaleX(1);}
+.tab-icon{font-size:22px;transition:transform .15s;}
+.tab-btn.active .tab-icon{transform:scale(1.1);}
+.tab-label{
+  font-size:10px;letter-spacing:.04em;
+  color:var(--muted);transition:color .15s;
+  font-weight:400;
+}
+.tab-btn.active .tab-label{color:var(--gold);font-weight:500;}
+
+/* ===== COMMON COMPONENTS ===== */
+.page-pad{padding:20px 20px 40px;}
+.section-title{
+  font-family:'Noto Serif JP',serif;
+  font-size:20px;font-weight:400;
+  color:var(--navy);
+  margin-bottom:4px;
+  letter-spacing:.04em;
+}
+.section-sub{
+  font-size:12px;color:var(--muted);
+  margin-bottom:20px;letter-spacing:.04em;
+}
+.card{
+  background:var(--white);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:18px;
+  margin-bottom:12px;
+  box-shadow:var(--shadow);
+}
+.card-title{
+  font-size:13px;font-weight:500;
+  color:var(--navy);margin-bottom:12px;
+  display:flex;align-items:center;gap:8px;
+  letter-spacing:.04em;
+}
+.card-title-icon{
+  width:28px;height:28px;
+  background:var(--gold-pale);
+  border-radius:6px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;
+}
+.label{
+  display:block;font-size:11px;
+  color:var(--muted);margin-bottom:5px;
+  letter-spacing:.06em;
+}
+.input,.select,.textarea{
+  width:100%;
+  padding:11px 14px;
+  border:1px solid var(--border);
+  border-radius:var(--radius-sm);
+  font-size:14px;
+  font-family:'Noto Sans JP',sans-serif;
+  color:var(--text);
+  background:var(--bg);
+  outline:none;
+  transition:border-color .15s,background .15s;
+  -webkit-appearance:none;
+}
+.input:focus,.select:focus,.textarea:focus{
+  border-color:var(--gold);
+  background:var(--white);
+}
+.textarea{resize:vertical;min-height:80px;line-height:1.7;}
+.select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b6b6b' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px;}
+.field{margin-bottom:12px;}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+.btn{
+  width:100%;padding:13px;
+  border:none;border-radius:var(--radius-sm);
+  font-size:14px;font-weight:500;
+  font-family:'Noto Sans JP',sans-serif;
+  letter-spacing:.06em;
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:all .15s;
+}
+.btn-primary{background:var(--navy);color:var(--white);}
+.btn-primary:hover{background:var(--navy2);}
+.btn-gold{background:var(--gold);color:var(--navy);}
+.btn-gold:hover{background:var(--gold2);}
+.btn-outline{
+  background:transparent;
+  border:1px solid var(--border);
+  color:var(--muted);
+}
+.btn-outline:hover{border-color:var(--gold);color:var(--gold);}
+.btn-sm{padding:8px 14px;width:auto;font-size:12px;}
+.divider{height:1px;background:var(--border);margin:16px 0;}
+.tag{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:11px;padding:3px 10px;
+  border-radius:20px;font-weight:500;
+  letter-spacing:.04em;
+}
+.tag-gold{background:var(--gold-pale);color:var(--gold);border:1px solid rgba(184,146,74,0.2);}
+.tag-navy{background:rgba(15,30,53,0.06);color:var(--navy);}
+.tag-green{background:#eafaf1;color:var(--green);}
+.tag-red{background:#fef0ee;color:var(--red);}
+
+.result-box{
+  background:var(--gold-pale);
+  border:1px solid rgba(184,146,74,0.2);
+  border-radius:var(--radius-sm);
+  padding:16px;
+  margin-top:12px;
+  display:none;
+}
+.result-box.show{display:block;}
+.result-price{
+  font-family:'Noto Serif JP',serif;
+  font-size:32px;font-weight:400;
+  color:var(--red);
+  text-align:center;
+  margin-bottom:8px;
+}
+.result-range{
+  font-size:12px;color:var(--muted);
+  text-align:center;margin-bottom:12px;
+}
+.result-detail{
+  font-size:12px;color:var(--muted);
+  line-height:1.9;white-space:pre-line;
+  background:var(--white);
+  border-radius:6px;padding:12px;
+}
+
+/* ===== HOME TAB ===== */
+.home-greeting{
+  padding:24px 20px 0;
+}
+.greeting-time{
+  font-family:'DM Mono',monospace;
+  font-size:11px;letter-spacing:.16em;
+  color:var(--gold);text-transform:uppercase;
+  margin-bottom:6px;
+}
+.greeting-text{
+  font-family:'Noto Serif JP',serif;
+  font-size:22px;font-weight:400;
+  color:var(--navy);
+  line-height:1.5;
+  margin-bottom:4px;
+}
+.greeting-date{font-size:12px;color:var(--muted);}
+
+.weather-card{
+  background:linear-gradient(135deg,var(--navy) 0%,#1a3a5c 100%);
+  border-radius:var(--radius);
+  padding:20px;
+  margin:16px 20px 0;
+  color:var(--white);
+  position:relative;overflow:hidden;
+}
+.weather-card::before{
+  content:'';position:absolute;
+  right:-30px;top:-30px;
+  width:120px;height:120px;
+  background:rgba(255,255,255,0.04);
+  border-radius:50%;
+}
+.weather-top{display:flex;align-items:center;justify-content:space-between;}
+.weather-location{font-size:12px;color:rgba(255,255,255,0.6);margin-bottom:4px;letter-spacing:.06em;}
+.weather-temp{font-family:'DM Mono',monospace;font-size:42px;font-weight:300;color:var(--white);}
+.weather-icon{font-size:52px;opacity:.9;}
+.weather-desc{font-size:12px;color:rgba(255,255,255,0.6);margin-top:8px;}
+.weather-detail{
+  display:flex;gap:20px;
+  margin-top:12px;padding-top:12px;
+  border-top:1px solid rgba(255,255,255,0.08);
+}
+.weather-detail-item{font-size:11px;color:rgba(255,255,255,0.5);}
+.weather-detail-item strong{display:block;font-size:13px;color:rgba(255,255,255,0.9);font-weight:400;}
+
+.quick-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  padding:16px 20px 0;
+}
+.quick-btn{
+  background:var(--white);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:18px 14px;
+  cursor:pointer;
+  transition:all .15s;
+  text-align:left;
+  box-shadow:var(--shadow);
+}
+.quick-btn:active{transform:scale(.97);}
+.quick-btn-icon{font-size:24px;margin-bottom:8px;display:block;}
+.quick-btn-label{font-size:13px;font-weight:500;color:var(--navy);letter-spacing:.04em;}
+.quick-btn-sub{font-size:11px;color:var(--muted);margin-top:3px;}
+
+.stat-row{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:10px;padding:16px 20px 0;
+}
+.stat-item{
+  background:var(--white);
+  border:1px solid var(--border);
+  border-radius:var(--radius-sm);
+  padding:14px 12px;
+  text-align:center;
+  box-shadow:var(--shadow);
+}
+.stat-num{
+  font-family:'DM Mono',monospace;
+  font-size:22px;font-weight:400;
+  color:var(--navy);
+}
+.stat-unit{font-size:11px;color:var(--muted);}
+.stat-label{font-size:10px;color:var(--muted);margin-top:4px;letter-spacing:.04em;}
+
+/* ===== MAP TAB ===== */
+#map-container{
+  position:relative;
+  height:calc(100% - 200px);
+  min-height:260px;
+}
+#map{width:100%;height:100%;}
+.map-search-bar{
+  padding:14px 16px;
+  background:var(--white);
+  border-bottom:1px solid var(--border);
+}
+.map-search-row{display:flex;gap:8px;margin-bottom:8px;}
+.map-search-input{
+  flex:1;padding:10px 14px;
+  border:1px solid var(--border);
+  border-radius:var(--radius-sm);
+  font-size:14px;
+  font-family:'Noto Sans JP',sans-serif;
+  background:var(--bg);outline:none;
+  transition:border-color .15s;
+}
+.map-search-input:focus{border-color:var(--gold);}
+.map-search-btn{
+  padding:10px 16px;
+  background:var(--navy);color:var(--white);
+  border:none;border-radius:var(--radius-sm);
+  font-size:13px;font-weight:500;
+  cursor:pointer;white-space:nowrap;
+  font-family:'Noto Sans JP',sans-serif;
+}
+.map-filter-row{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;}
+.map-filter-row::-webkit-scrollbar{display:none;}
+.filter-chip{
+  padding:5px 12px;
+  border:1px solid var(--border);
+  border-radius:20px;font-size:12px;
+  color:var(--muted);background:var(--white);
+  cursor:pointer;white-space:nowrap;
+  transition:all .15s;font-family:'Noto Sans JP',sans-serif;
+}
+.filter-chip.active{
+  background:var(--navy);color:var(--white);
+  border-color:var(--navy);
+}
+.map-stats{
+  padding:12px 16px;
+  background:var(--white);
+  border-top:1px solid var(--border);
+  display:none;
+}
+.map-stats.show{display:block;}
+.map-stats-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:8px;
+}
+.map-stat{text-align:center;}
+.map-stat-val{
+  font-family:'DM Mono',monospace;
+  font-size:16px;font-weight:400;color:var(--navy);
+}
+.map-stat-label{font-size:10px;color:var(--muted);letter-spacing:.04em;}
+.map-list{
+  max-height:220px;
+  overflow-y:auto;
+  background:var(--white);
+  border-top:1px solid var(--border);
+}
+.map-list-item{
+  padding:12px 16px;
+  border-bottom:1px solid var(--border2);
+  display:flex;align-items:center;gap:12px;
+  cursor:pointer;transition:background .15s;
+}
+.map-list-item:hover{background:var(--bg);}
+.map-list-num{
+  width:24px;height:24px;
+  background:var(--navy);color:var(--white);
+  border-radius:50%;font-size:11px;font-weight:500;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.map-list-body{flex:1;min-width:0;}
+.map-list-name{font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.map-list-meta{font-size:11px;color:var(--muted);}
+.map-list-price{font-size:14px;font-weight:500;color:var(--red);white-space:nowrap;}
+.send-satei-mini{
+  padding:5px 10px;
+  background:var(--gold-pale);
+  border:1px solid rgba(184,146,74,0.2);
+  border-radius:4px;font-size:11px;
+  color:var(--gold);cursor:pointer;
+  font-family:'Noto Sans JP',sans-serif;
+  white-space:nowrap;transition:all .15s;
+}
+.send-satei-mini:hover{background:var(--gold);color:var(--navy);}
+.send-satei-mini.sent{background:#eafaf1;border-color:#a9dfbf;color:var(--green);}
+
+/* ===== SATEI TAB ===== */
+.case-row{
+  display:grid;
+  grid-template-columns:1.6fr 0.9fr 0.8fr 0.7fr 0.9fr;
+  gap:5px;align-items:center;margin-bottom:6px;
+}
+.case-input{
+  padding:8px 8px;
+  border:1px solid var(--border);
+  border-radius:6px;font-size:12px;
+  font-family:'Noto Sans JP',sans-serif;
+  background:var(--bg);outline:none;
+  transition:border-color .15s;
+  width:100%;
+}
+.case-input:focus{border-color:var(--gold);background:var(--white);}
+.tanka-tag{
+  font-size:11px;font-weight:500;
+  color:var(--gold);background:var(--gold-pale);
+  border-radius:5px;padding:8px 4px;
+  text-align:center;border:1px solid rgba(184,146,74,0.15);
+  white-space:nowrap;
+}
+.adj-row{
+  display:flex;align-items:center;gap:10px;margin-bottom:10px;
+}
+.adj-label{font-size:12px;color:var(--muted);width:90px;flex-shrink:0;}
+.adj-range{flex:1;accent-color:var(--gold);}
+.adj-val{font-size:12px;font-weight:500;color:var(--navy);width:40px;text-align:right;}
+.map-import-btn{
+  width:100%;padding:10px;
+  background:var(--gold-pale);
+  border:1px dashed rgba(184,146,74,0.4);
+  border-radius:var(--radius-sm);
+  font-size:13px;font-weight:500;
+  color:var(--gold);cursor:pointer;
+  font-family:'Noto Sans JP',sans-serif;
+  margin-bottom:10px;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+}
+
+/* ===== BUKKEN TAB ===== */
+.tab-switcher{
+  display:flex;
+  border:1px solid var(--border);
+  border-radius:var(--radius-sm);
+  overflow:hidden;margin-bottom:16px;
+}
+.tab-switch-btn{
+  flex:1;padding:10px;font-size:13px;font-weight:500;
+  cursor:pointer;border:none;background:transparent;
+  color:var(--muted);font-family:'Noto Sans JP',sans-serif;
+  transition:all .15s;
+}
+.tab-switch-btn.active{background:var(--navy);color:var(--white);}
+
+.gen-result{
+  background:var(--white);
+  border:1px solid var(--border);
+  border-radius:var(--radius-sm);
+  padding:16px;
+  font-size:13px;line-height:2;
+  color:var(--text);
+  white-space:pre-wrap;
+  margin-top:12px;
+  display:none;
+  min-height:120px;
+}
+.gen-result.show{display:block;}
+.char-count{font-size:11px;color:var(--muted);text-align:right;margin-top:6px;}
+
+.copy-btn{
+  width:100%;padding:10px;
+  background:transparent;
+  border:1px solid var(--border);
+  border-radius:var(--radius-sm);
+  font-size:12px;color:var(--muted);
+  cursor:pointer;font-family:'Noto Sans JP',sans-serif;
+  margin-top:8px;transition:all .15s;
+  display:none;
+}
+.copy-btn.show{display:block;}
+.copy-btn:hover{border-color:var(--gold);color:var(--gold);}
+
+.loading-dots{
+  display:flex;gap:4px;justify-content:center;padding:20px;
+}
+.loading-dots span{
+  width:6px;height:6px;border-radius:50%;
+  background:var(--gold);
+  animation:dotBounce 1.2s infinite;
+}
+.loading-dots span:nth-child(2){animation-delay:.2s;}
+.loading-dots span:nth-child(3){animation-delay:.4s;}
+
+/* ===== ANIMATIONS ===== */
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+@keyframes dotBounce{
+  0%,80%,100%{transform:scale(.6);opacity:.4;}
+  40%{transform:scale(1);opacity:1;}
+}
+
+/* ===== TOAST ===== */
+.toast{
+  position:fixed;bottom:calc(var(--tab-h) + 16px);
+  left:50%;transform:translateX(-50%) translateY(10px);
+  background:var(--navy);color:var(--white);
+  padding:10px 20px;border-radius:20px;
+  font-size:13px;box-shadow:var(--shadow-lg);
+  opacity:0;transition:opacity .3s,transform .3s;
+  z-index:999;pointer-events:none;white-space:nowrap;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* ===== IMPORT BANNER ===== */
+.import-banner{
+  display:none;
+  background:#eafaf1;border:1px solid #a9dfbf;
+  border-radius:var(--radius-sm);padding:10px 14px;
+  font-size:12px;font-weight:500;color:var(--green);
+  margin-bottom:12px;
+  transition:opacity .5s;
+}
+</style>
+</head>
+<body>
+
+<!-- SPLASH -->
+<div id="splash">
+  <div class="splash-logo">ASSOCIA</div>
+  <div class="splash-line"></div>
+  <div class="splash-sub">Real Estate Intelligence</div>
+</div>
+
+<div id="app">
+
+  <!-- HEADER -->
+  <header class="app-header">
+    <div class="header-logo">ASSOCIA<span>.</span></div>
+    <div class="header-spacer"></div>
+    <div class="header-date" id="header-date"></div>
+    <a href="tel:0642563313" class="header-tel">
+      <div class="header-tel-icon">📞</div>
+    </a>
+  </header>
+
+  <!-- CONTENT -->
+  <main class="app-content">
+
+    <!-- ===== HOME ===== -->
+    <div class="tab-panel active" id="panel-home">
+      <div class="home-greeting">
+        <div class="greeting-time" id="greeting-time"></div>
+        <div class="greeting-text" id="greeting-text"></div>
+        <div class="greeting-date" id="greeting-date"></div>
+      </div>
+
+      <!-- 天気 -->
+      <div class="weather-card" id="weather-card">
+        <div class="weather-top">
+          <div>
+            <div class="weather-location">📍 大阪市中央区</div>
+            <div class="weather-temp" id="w-temp">--°</div>
+          </div>
+          <div class="weather-icon" id="w-icon">🌤️</div>
+        </div>
+        <div class="weather-desc" id="w-desc">天気を取得中...</div>
+        <div class="weather-detail">
+          <div class="weather-detail-item"><strong id="w-high">--°</strong>最高</div>
+          <div class="weather-detail-item"><strong id="w-low">--°</strong>最低</div>
+          <div class="weather-detail-item"><strong id="w-hum">--%</strong>湿度</div>
+          <div class="weather-detail-item"><strong id="w-wind">--m/s</strong>風速</div>
+        </div>
+      </div>
+
+      <!-- クイックアクセス -->
+      <div style="padding:16px 20px 0;">
+        <div style="font-size:11px;letter-spacing:.1em;color:var(--muted);margin-bottom:10px;">QUICK ACCESS</div>
+      </div>
+      <div class="quick-grid">
+        <button class="quick-btn" onclick="switchTab('map')">
+          <span class="quick-btn-icon">🗺️</span>
+          <div class="quick-btn-label">相場マップ</div>
+          <div class="quick-btn-sub">近隣成約事例を検索</div>
+        </button>
+        <button class="quick-btn" onclick="switchTab('satei')">
+          <span class="quick-btn-icon">📊</span>
+          <div class="quick-btn-label">査定エンジン</div>
+          <div class="quick-btn-sub">成約事例から査定額算出</div>
+        </button>
+        <button class="quick-btn" onclick="switchTab('bukken')">
+          <span class="quick-btn-icon">📝</span>
+          <div class="quick-btn-label">物件ツール</div>
+          <div class="quick-btn-sub">説明文・査定書作成</div>
+        </button>
+        <button class="quick-btn" onclick="openTel()">
+          <span class="quick-btn-icon">📞</span>
+          <div class="quick-btn-label">電話発信</div>
+          <div class="quick-btn-sub">06-4256-3313</div>
+        </button>
+      </div>
+
+      <!-- 本日の統計 -->
+      <div style="padding:16px 20px 0;">
+        <div style="font-size:11px;letter-spacing:.1em;color:var(--muted);margin-bottom:10px;">TODAY'S STATS</div>
+      </div>
+      <div class="stat-row" style="padding-bottom:8px;">
+        <div class="stat-item">
+          <div class="stat-num" id="s-search">0</div>
+          <div class="stat-unit">回</div>
+          <div class="stat-label">相場検索</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num" id="s-satei">0</div>
+          <div class="stat-unit">件</div>
+          <div class="stat-label">査定実行</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num" id="s-gen">0</div>
+          <div class="stat-unit">件</div>
+          <div class="stat-label">文章生成</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== MAP ===== -->
+    <div class="tab-panel" id="panel-map" style="overflow:hidden;display:flex;flex-direction:column;">
+      <div class="map-search-bar">
+        <div class="map-search-row">
+          <input class="map-search-input" id="map-addr" placeholder="住所・エリアを入力（例：大阪市阿倍野区）" type="text">
+          <button class="map-search-btn" onclick="doMapSearch()">検索</button>
+        </div>
+        <div class="map-filter-row">
+          <button class="filter-chip active" data-type="all" onclick="setFilter(this,'all')">すべて</button>
+          <button class="filter-chip" data-type="mansion" onclick="setFilter(this,'mansion')">マンション</button>
+          <button class="filter-chip" data-type="house" onclick="setFilter(this,'house')">一戸建て</button>
+          <button class="filter-chip" data-type="land" onclick="setFilter(this,'land')">土地</button>
+          <button class="filter-chip" data-type="500" onclick="setRadiusFilter(this,500)">500m</button>
+          <button class="filter-chip" data-type="1000" onclick="setRadiusFilter(this,1000)">1km</button>
+          <button class="filter-chip" data-type="2000" onclick="setRadiusFilter(this,2000)">2km</button>
+        </div>
+      </div>
+      <div id="map-container" style="flex:1;min-height:200px;">
+        <div id="map"></div>
+      </div>
+      <div class="map-stats" id="map-stats">
+        <div class="map-stats-grid">
+          <div class="map-stat"><div class="map-stat-val" id="ms-avg">—</div><div class="map-stat-label">平均価格(万)</div></div>
+          <div class="map-stat"><div class="map-stat-val" id="ms-tanka">—</div><div class="map-stat-label">平均㎡単価</div></div>
+          <div class="map-stat"><div class="map-stat-val" id="ms-count">—</div><div class="map-stat-label">件数</div></div>
+        </div>
+      </div>
+      <div class="map-list" id="map-list"></div>
+    </div>
+
+    <!-- ===== SATEI ===== -->
+    <div class="tab-panel" id="panel-satei">
+      <div class="page-pad">
+        <div class="section-title">査定エンジン</div>
+        <div class="section-sub">成約事例から査定額を自動算出</div>
+
+        <!-- 物件情報 -->
+        <div class="card">
+          <div class="card-title"><div class="card-title-icon">🏠</div>対象物件情報</div>
+          <div class="field-row">
+            <div class="field">
+              <label class="label">物件種別</label>
+              <select class="select" id="s-type">
+                <option value="マンション">マンション</option>
+                <option value="一戸建て">一戸建て</option>
+                <option value="土地">土地</option>
+                <option value="収益物件">収益物件</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="label">専有面積(㎡)</label>
+              <input class="input" type="number" id="s-area" placeholder="例：75.5">
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label class="label">築年数(年)</label>
+              <input class="input" type="number" id="s-age" placeholder="例：15">
+            </div>
+            <div class="field">
+              <label class="label">向き</label>
+              <select class="select" id="s-muki">
+                <option value="0">未選択</option>
+                <option value="3">南向き(+3%)</option>
+                <option value="2">南東向き(+2%)</option>
+                <option value="2">南西向き(+2%)</option>
+                <option value="1">東向き(+1%)</option>
+                <option value="0">西向き(±0%)</option>
+                <option value="-1">北東向き(-1%)</option>
+                <option value="-1">北西向き(-1%)</option>
+                <option value="-3">北向き(-3%)</option>
+              </select>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label class="label">リフォーム</label>
+              <select class="select" id="s-reform">
+                <option value="0">未実施</option>
+                <option value="5">一部実施(+5%)</option>
+                <option value="10">フル実施(+10%)</option>
+                <option value="-3">要リフォーム(-3%)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="label">管理状態</label>
+              <select class="select" id="s-kanri">
+                <option value="0">普通</option>
+                <option value="3">良好(+3%)</option>
+                <option value="5">非常に良好(+5%)</option>
+                <option value="-3">やや難あり(-3%)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- 成約事例 -->
+        <div class="card">
+          <div class="card-title"><div class="card-title-icon">📋</div>成約事例</div>
+          <button class="map-import-btn" onclick="importFromMap()">
+            🗺️ 相場マップから取り込む
+          </button>
+          <div class="import-banner" id="import-banner"></div>
+          <div style="display:grid;grid-template-columns:1.6fr 0.9fr 0.8fr 0.7fr 0.9fr;gap:5px;margin-bottom:5px;">
+            <span style="font-size:10px;color:var(--muted);">所在地・物件名</span>
+            <span style="font-size:10px;color:var(--muted);">成約価格(万)</span>
+            <span style="font-size:10px;color:var(--muted);">面積(㎡)</span>
+            <span style="font-size:10px;color:var(--muted);">築年</span>
+            <span style="font-size:10px;color:var(--muted);text-align:center;">㎡単価</span>
+          </div>
+          <div id="case-rows"></div>
+          <button class="btn btn-outline btn-sm" style="margin-top:4px;" onclick="addCaseRow()">＋ 事例を追加</button>
+        </div>
+
+        <!-- 販売中物件 -->
+        <div class="card">
+          <div class="card-title"><div class="card-title-icon">🏪</div>販売中物件 <span class="tag tag-gold" style="font-size:10px;">▲5%補正</span></div>
+          <div style="display:grid;grid-template-columns:1.6fr 0.9fr 0.8fr 0.7fr 0.9fr;gap:5px;margin-bottom:5px;">
+            <span style="font-size:10px;color:var(--muted);">物件名・所在地</span>
+            <span style="font-size:10px;color:var(--muted);">販売価格(万)</span>
+            <span style="font-size:10px;color:var(--muted);">面積(㎡)</span>
+            <span style="font-size:10px;color:var(--muted);">築年</span>
+            <span style="font-size:10px;color:var(--muted);text-align:center;">㎡単価</span>
+          </div>
+          <div id="list-rows"></div>
+          <button class="btn btn-outline btn-sm" style="margin-top:4px;" onclick="addListRow()">＋ 物件を追加</button>
+        </div>
+
+        <button class="btn btn-primary" onclick="calcSatei()">📊 査定額を算出する</button>
+
+        <div class="result-box" id="satei-result">
+          <div class="result-price" id="r-final">—万円</div>
+          <div class="result-range" id="r-range"></div>
+          <div class="result-detail" id="r-detail"></div>
+          <button class="btn btn-gold" style="margin-top:12px;" onclick="sendSateiToAI()">AIコメントを生成 ↗</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== BUKKEN ===== -->
+    <div class="tab-panel" id="panel-bukken">
+      <div class="page-pad">
+        <div class="section-title">物件ツール</div>
+        <div class="section-sub">説明文生成・査定書作成</div>
+
+        <div class="tab-switcher">
+          <button class="tab-switch-btn active" onclick="switchBukkenTab('desc',this)">📝 説明文生成</button>
+          <button class="tab-switch-btn" onclick="switchBukkenTab('satei-doc',this)">📄 査定書</button>
+        </div>
+
+        <!-- 説明文生成 -->
+        <div id="bukken-desc">
+          <div class="card">
+            <div class="card-title"><div class="card-title-icon">🏠</div>物件情報</div>
+            <div class="field-row">
+              <div class="field">
+                <label class="label">物件種別</label>
+                <select class="select" id="b-type">
+                  <option>マンション</option>
+                  <option>一戸建て</option>
+                  <option>土地</option>
+                  <option>収益物件</option>
+                </select>
+              </div>
+              <div class="field">
+                <label class="label">価格</label>
+                <input class="input" id="b-price" placeholder="例：3,480万円">
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label class="label">所在地</label>
+                <input class="input" id="b-addr" placeholder="例：大阪市北区">
+              </div>
+              <div class="field">
+                <label class="label">最寄り駅</label>
+                <input class="input" id="b-eki" placeholder="例：南森町駅 徒歩5分">
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label class="label">間取り</label>
+                <input class="input" id="b-madori" placeholder="例：3LDK">
+              </div>
+              <div class="field">
+                <label class="label">面積(㎡)</label>
+                <input class="input" id="b-area" placeholder="例：75.5">
+              </div>
+            </div>
+            <div class="field">
+              <label class="label">築年数</label>
+              <input class="input" id="b-age" placeholder="例：築10年">
+            </div>
+            <div class="field">
+              <label class="label">設備・特徴</label>
+              <input class="input" id="b-features" placeholder="例：南向き、角部屋、駐車場2台">
+            </div>
+            <div class="field">
+              <label class="label">補足・周辺環境</label>
+              <textarea class="textarea" id="b-notes" placeholder="例：小学校徒歩3分、閑静な住宅街"></textarea>
+            </div>
+            <div class="field">
+              <label class="label">文体</label>
+              <select class="select" id="b-tone">
+                <option>上品・高級感</option>
+                <option>親しみやすい</option>
+                <option>ビジネスライク</option>
+                <option>ファミリー向け</option>
+                <option>投資家向け</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="genDesc()">✨ 説明文を生成する</button>
+          <div class="gen-result" id="desc-result"></div>
+          <div class="char-count" id="desc-char" style="display:none;"></div>
+          <button class="copy-btn" id="desc-copy" onclick="copyDesc()">📋 コピーする</button>
+        </div>
+
+        <!-- 査定書 -->
+        <div id="bukken-satei-doc" style="display:none;">
+          <div class="card">
+            <div class="card-title"><div class="card-title-icon">📄</div>基本情報</div>
+            <div class="field-row">
+              <div class="field">
+                <label class="label">査定日</label>
+                <input class="input" type="date" id="d-date">
+              </div>
+              <div class="field">
+                <label class="label">担当者</label>
+                <input class="input" id="d-tanto" placeholder="重原 隆司">
+              </div>
+            </div>
+            <div class="field">
+              <label class="label">依頼者名</label>
+              <input class="input" id="d-iraisha" placeholder="山田 太郎 様">
+            </div>
+            <div class="field">
+              <label class="label">物件所在地</label>
+              <input class="input" id="d-addr" placeholder="大阪市〇〇区">
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title"><div class="card-title-icon">💴</div>査定価格</div>
+            <div class="field-row">
+              <div class="field">
+                <label class="label">査定価格（万円）</label>
+                <input class="input" type="number" id="d-price" placeholder="例：3800">
+              </div>
+              <div class="field">
+                <label class="label">価格帯</label>
+                <input class="input" id="d-range" placeholder="例：3600〜4000万円">
+              </div>
+            </div>
+            <div class="field">
+              <label class="label">特記事項・コメント</label>
+              <textarea class="textarea" id="d-comment" placeholder="査定コメントを入力、またはAIで生成"></textarea>
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="genSateiDoc()">📄 査定コメントをAI生成</button>
+          <div class="gen-result" id="satei-doc-result"></div>
+          <button class="copy-btn" id="doc-copy" onclick="copyDoc()">📋 コメントをコピー</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- TAB BAR -->
+  <nav class="tab-bar">
+    <button class="tab-btn active" data-tab="home" onclick="switchTab('home')">
+      <span class="tab-icon">🏠</span>
+      <span class="tab-label">ホーム</span>
+    </button>
+    <button class="tab-btn" data-tab="map" onclick="switchTab('map')">
+      <span class="tab-icon">🗺️</span>
+      <span class="tab-label">相場マップ</span>
+    </button>
+    <button class="tab-btn" data-tab="satei" onclick="switchTab('satei')">
+      <span class="tab-icon">📊</span>
+      <span class="tab-label">査定</span>
+    </button>
+    <button class="tab-btn" data-tab="bukken" onclick="switchTab('bukken')">
+      <span class="tab-icon">📝</span>
+      <span class="tab-label">物件ツール</span>
+    </button>
+  </nav>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== INIT =====
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    document.getElementById('splash').classList.add('hide');
+    document.getElementById('app').classList.add('ready');
+  }, 1800);
+  initHome();
+  initMap();
+  initSatei();
+  setTodayDate();
+});
+
+// ===== HOME =====
+function initHome() {
+  const now = new Date();
+  const h = now.getHours();
+  let timeLabel = 'GOOD MORNING', greeting = 'おはようございます';
+  if (h >= 12 && h < 17) { timeLabel = 'GOOD AFTERNOON'; greeting = 'こんにちは'; }
+  else if (h >= 17) { timeLabel = 'GOOD EVENING'; greeting = 'おつかれさまです'; }
+  document.getElementById('greeting-time').textContent = timeLabel;
+  document.getElementById('greeting-text').textContent = `${greeting}、重原さん`;
+  const days = ['日','月','火','水','木','金','土'];
+  document.getElementById('greeting-date').textContent =
+    `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日（${days[now.getDay()]}）`;
+  document.getElementById('header-date').textContent =
+    `${now.getMonth()+1}/${now.getDate()}(${days[now.getDay()]})`;
+  fetchWeather();
+}
+
+async function fetchWeather() {
+  try {
+    const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=34.6937&longitude=135.5023&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min&timezone=Asia%2FTokyo&forecast_days=1');
+    const d = await res.json();
+    const c = d.current;
+    const wc = c.weather_code;
+    const icons = {0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',51:'🌦️',61:'🌧️',71:'🌨️',80:'🌦️',95:'⛈️'};
+    const descs = {0:'快晴',1:'概ね晴れ',2:'一部曇り',3:'曇り',45:'霧',51:'小雨',61:'雨',71:'雪',80:'にわか雨',95:'雷雨'};
+    let icon = '🌤️', desc = '晴れ';
+    for (const k of Object.keys(icons).sort((a,b)=>b-a)) {
+      if (wc >= parseInt(k)) { icon = icons[k]; desc = descs[k]; break; }
+    }
+    document.getElementById('w-temp').textContent = Math.round(c.temperature_2m) + '°';
+    document.getElementById('w-icon').textContent = icon;
+    document.getElementById('w-desc').textContent = desc;
+    document.getElementById('w-high').textContent = Math.round(d.daily.temperature_2m_max[0]) + '°';
+    document.getElementById('w-low').textContent = Math.round(d.daily.temperature_2m_min[0]) + '°';
+    document.getElementById('w-hum').textContent = c.relative_humidity_2m + '%';
+    document.getElementById('w-wind').textContent = Math.round(c.wind_speed_10m/3.6*10)/10 + 'm/s';
+  } catch(e) {
+    document.getElementById('w-desc').textContent = '天気情報を取得できませんでした';
+  }
+}
+
+function openTel() { window.location.href = 'tel:0642563313'; }
+
+// ===== TAB =====
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelector(`[data-tab="${tab}"]`)?.classList.add('active');
+  document.getElementById(`panel-${tab}`)?.classList.add('active');
+  if (tab === 'map') setTimeout(() => map && map.invalidateSize(), 100);
+}
+
+// ===== MAP =====
+let map, markers = [], circleLayer = null, allProps = [], activeFilter = 'all', searchRadius = 2000;
+let caseIdx = 0, listIdx = 0;
+
+function initMap() {
+  map = L.map('map', { zoomControl: false }).setView([34.6937, 135.5023], 14);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    attribution: '© OpenStreetMap © CARTO', subdomains: 'abcd', maxZoom: 19
+  }).addTo(map);
+  L.control.zoom({ position: 'topright' }).addTo(map);
+}
+
+function setFilter(el, type) {
+  document.querySelectorAll('.filter-chip').forEach(c => {
+    if (['all','mansion','house','land'].includes(c.dataset.type)) c.classList.remove('active');
+  });
+  el.classList.add('active');
+  activeFilter = type;
+}
+
+function setRadiusFilter(el, r) {
+  document.querySelectorAll('.filter-chip').forEach(c => {
+    if (['500','1000','2000'].includes(c.dataset.type)) c.classList.remove('active');
+  });
+  el.classList.add('active');
+  searchRadius = r;
+}
+
+// 住所を段階的に短くして検索（番地→丁目→町名→区の順でフォールバック）
+async function geocode(addr) {
+  // 検索候補を段階的に生成
+  const candidates = [];
+
+  // 元の住所
+  candidates.push(addr);
+
+  // 末尾の番地（数字-数字）を除去
+  const noNum = addr.replace(/[\s　]*\d+[-－]\d+.*$/, '').replace(/[\s　]*\d+番地.*$/, '').replace(/[\s　]*\d+$/, '').trim();
+  if (noNum !== addr) candidates.push(noNum);
+
+  // 「大阪府」を付加したバージョン
+  if (!addr.includes('大阪府')) {
+    candidates.push('大阪府 ' + noNum);
+    candidates.push('大阪府 ' + addr);
+  }
+
+  // 丁目以降を除去した区レベル
+  const districtOnly = addr.replace(/[\s　]*\d+丁目.*$/, '').trim();
+  if (districtOnly !== addr && districtOnly !== noNum) candidates.push(districtOnly);
+
+  // 区レベル（例：「大阪市阿倍野区」）
+  const match = addr.match(/(.+?[都道府県].+?[市区町村])/);
+  if (match) candidates.push(match[1]);
+
+  // 順番に試す
+  for (const q of candidates) {
+    if (!q) continue;
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=3&accept-language=ja&countrycodes=jp`,
+        {headers:{'User-Agent':'AssociaApp/1.0'}}
+      );
+      const d = await res.json();
+      if (d.length > 0) {
+        console.log(`住所解決: "${q}" → ${d[0].display_name}`);
+        return { lat: parseFloat(d[0].lat), lng: parseFloat(d[0].lon), resolved: q };
+      }
+    } catch(e) { continue; }
+  }
+
+  throw new Error('住所が見つかりませんでした。都道府県から入力してみてください。');
+}
+
+function calcDist(lat1,lng1,lat2,lng2) {
+  const R=6371000, dLat=(lat2-lat1)*Math.PI/180, dLng=(lng2-lng1)*Math.PI/180;
+  const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+// ===== 国交省API設定 =====
+const MLIT_API_KEY = '096dda8f47f34e91abf34030efe8d5e0';
+// Netlify Functions経由でCORSを回避
+const MLIT_PROXY_URL = '/.netlify/functions/mlit-api';
+
+// 都道府県コード
+const PREF_CODES = {'大阪府':'27','東京都':'13','神奈川県':'14','愛知県':'23','兵庫県':'28','京都府':'26','福岡県':'40','北海道':'01'};
+
+// 物件種別マッピング
+const TYPE_MAP = {
+  'all': null,
+  'mansion': ['中古マンション等'],
+  'house': ['中古住宅'],
+  'land': ['宅地(土地)','宅地(土地と建物)']
+};
+
+// 市区町村コードを取得
+async function getCityCode(addr) {
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}&limit=1&accept-language=ja&addressdetails=1`,{headers:{'User-Agent':'AssociaApp/1.0'}});
+    const d = await res.json();
+    if (!d.length) return null;
+    // 住所から都道府県・市区町村を推定
+    const dispName = d[0].display_name;
+    return dispName;
+  } catch(e){ return null; }
+}
+
+// 国交省APIから成約事例を取得
+async function fetchMLITData(lat, lng, type, addr) {
+  // 緯度経度から都道府県・市区町村コードを推定
+  // まずNominatimで住所を逆ジオコーディング
+  let prefCode = '27'; // デフォルト大阪
+  let cityCode = '';
+
+  try {
+    const revRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=ja`,{headers:{'User-Agent':'AssociaApp/1.0'}});
+    const revData = await revRes.json();
+    const addr = revData.address || {};
+
+    // 都道府県コード特定
+    const prefName = addr.state || '';
+    for (const [name, code] of Object.entries(PREF_CODES)) {
+      if (prefName.includes(name.replace('都','').replace('道','').replace('府','').replace('県',''))) {
+        prefCode = code; break;
+      }
+    }
+
+    // 市区町村コードを国交省APIで取得
+    const cityRes = await fetch(`${MLIT_PROXY_URL}?endpoint=XIT002&area=${prefCode}`);
+    const cityData = await cityRes.json();
+    const cityName = addr.city || addr.county || addr.town || '';
+
+    if (cityData.data) {
+      const matched = cityData.data.find(c =>
+        cityName.includes(c.name) || c.name.includes(cityName.replace('市','').replace('区','').replace('町',''))
+      );
+      if (matched) cityCode = matched.id;
+    }
+  } catch(e) {
+    console.log('逆ジオコーディングエラー:', e);
+  }
+
+  if (!cityCode) {
+    // 住所から市区町村コードを推定
+    const addrStr = addr || '';
+    if (addrStr.includes('阿倍野')) cityCode = '27109'; // 大阪市阿倍野区
+    else if (addrStr.includes('北区') || addrStr.includes('梅田')) cityCode = '27102'; // 大阪市北区
+    else if (addrStr.includes('中央区') || addrStr.includes('淀屋橋') || addrStr.includes('北浜')) cityCode = '27128'; // 大阪市中央区
+    else if (addrStr.includes('天王寺')) cityCode = '27111'; // 大阪市天王寺区
+    else if (addrStr.includes('住吉')) cityCode = '27120'; // 大阪市住吉区
+    else if (addrStr.includes('浪速') || addrStr.includes('難波')) cityCode = '27107'; // 大阪市浪速区
+    else if (addrStr.includes('西区')) cityCode = '27104'; // 大阪市西区
+    else if (addrStr.includes('福島')) cityCode = '27103'; // 大阪市福島区
+    else cityCode = '27128'; // デフォルト：大阪市中央区
+  }
+
+  // 現在の年と期間（直近4四半期）
+  const now = new Date();
+  const year = now.getFullYear();
+  const results = [];
+
+  // 直近2年分のデータを取得
+  for (let y = year; y >= year - 1; y--) {
+    for (let q = 4; q >= 1; q--) {
+      try {
+        const period = `${y}${q}`;
+        let url = `${MLIT_PROXY_URL}?endpoint=XIT001&area=${prefCode}&city=${cityCode}&timeFrom=${period}&timeTo=${period}&language=ja`;
+
+        const res = await fetch(url);
+
+        if (!res.ok) continue;
+        const data = await res.json();
+
+        if (data.data && data.data.length > 0) {
+          results.push(...data.data);
+        }
+
+        if (results.length >= 50) break;
+      } catch(e) { continue; }
+    }
+    if (results.length >= 50) break;
+  }
+
+  return results;
+}
+
+// APIデータを内部形式に変換
+function convertMLITData(rawData, clat, clng, typeFilter, radius) {
+  const tNames = {mansion:'マンション', house:'一戸建て', land:'土地'};
+  const typeKeys = {
+    'マンション等':'mansion', '中古マンション等':'mansion',
+    '宅地(土地)':'land', '宅地(土地と建物)':'land',
+    '中古住宅':'house', '農地':'land', '林地':'land'
+  };
+
+  const filtered = rawData.filter(item => {
+    if (!item.TradePrice || !item.Area) return false;
+    const itemType = typeKeys[item.Type] || 'mansion';
+    if (typeFilter !== 'all' && itemType !== typeFilter) return false;
+    return true;
+  });
+
+  // 緯度経度の推定（APIにない場合は中心周辺にランダム配置）
+  return filtered.slice(0, 30).map((item, i) => {
+    const price = Math.round(parseInt(item.TradePrice || 0) / 10000); // 万円
+    const area = parseFloat(item.Area || 0);
+    const tanka = area > 0 ? Math.round(price / area * 10) / 10 : 0;
+    const itemType = typeKeys[item.Type] || 'mansion';
+
+    // 緯度経度推定（同エリア内でランダム配置）
+    const angle = (i / filtered.length) * 2 * Math.PI + Math.random() * 0.5;
+    const dist = (Math.random() * 0.7 + 0.1) * radius;
+    const lat = clat + (dist * Math.cos(angle)) / 111000;
+    const lng = clng + (dist * Math.sin(angle)) / (111000 * Math.cos(clat * Math.PI / 180));
+    const actualDist = Math.round(calcDist(clat, clng, lat, lng));
+
+    // 物件名生成
+    const district = item.DistrictName || item.Municipality || '';
+    const period = item.Period || '';
+    const name = `${district} ${item.Type || ''} (${period})`.trim();
+
+    // 築年数
+    let age = null;
+    if (item.BuildingYear && item.BuildingYear !== '戦前') {
+      const buildYear = parseInt(item.BuildingYear.replace('年',''));
+      if (!isNaN(buildYear)) age = new Date().getFullYear() - buildYear;
+    }
+
+    return {
+      id: i, name, type: itemType,
+      typeName: tNames[itemType],
+      price, area, age, tanka,
+      lat, lng, dist: actualDist,
+      floor: item.FloorPlan || '',
+      purpose: item.Purpose || '',
+      raw: item
+    };
+  }).filter(p => p.price > 0 && p.area > 0)
+    .sort((a, b) => a.dist - b.dist);
+}
+
+async function doMapSearch() {
+  const addr = document.getElementById('map-addr').value.trim();
+  if (!addr) { showToast('住所を入力してください'); return; }
+  showToast('🔍 国交省データを取得中...');
+  markers.forEach(m=>map.removeLayer(m));
+  markers=[];
+  if (circleLayer){map.removeLayer(circleLayer);circleLayer=null;}
+  document.getElementById('map-list').innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px;">データを取得中です...</div>';
+  document.getElementById('map-stats').classList.remove('show');
+  try {
+    const {lat,lng} = await geocode(addr);
+    map.setView([lat,lng], searchRadius<=500?16:searchRadius<=1000?15:14);
+    circleLayer=L.circle([lat,lng],{radius:searchRadius,color:'#b8924a',fillColor:'#b8924a',fillOpacity:.05,weight:1.5,dashArray:'6 4'}).addTo(map);
+    const cIcon=L.divIcon({html:`<div style="width:12px;height:12px;background:#0f1e35;border:3px solid #b8924a;border-radius:50%;box-shadow:0 0 0 4px rgba(184,146,74,0.15)"></div>`,iconSize:[12,12],iconAnchor:[6,6],className:''});
+    L.marker([lat,lng],{icon:cIcon}).addTo(map);
+
+    // 国交省APIからリアルデータ取得
+    let props = [];
+    try {
+      const rawData = await fetchMLITData(lat, lng, activeFilter, addr);
+      if (rawData.length > 0) {
+        props = convertMLITData(rawData, lat, lng, activeFilter, searchRadius);
+        showToast(`✓ 国交省データ ${props.length}件を表示`);
+      } else {
+        showToast('⚠ データなし：検索範囲を広げてください');
+      }
+    } catch(apiErr) {
+      console.log('APIエラー:', apiErr);
+      showToast('⚠ APIエラー：再試行してください');
+    }
+
+    allProps = props;
+    if (props.length > 0) {
+      renderMapMarkers(props);
+      renderMapList(props);
+      renderMapStats(props);
+    } else {
+      document.getElementById('map-list').innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px;">このエリアの成約事例が見つかりませんでした。<br>別のエリアや検索範囲で試してください。</div>';
+    }
+    stats.search++;updateStats();
+  } catch(e) {
+    showToast('⚠ ' + e.message);
+    document.getElementById('map-list').innerHTML='';
+  }
+}
+
+function renderMapMarkers(props) {
+  markers.forEach(m=>map.removeLayer(m));markers=[];
+  const colors={mansion:'#1a4fa0',house:'#1a5e20',land:'#8a4500'};
+  props.forEach((p,i)=>{
+    const icon=L.divIcon({
+      html:`<div style="background:${colors[p.type]};color:#fff;border:2px solid #fff;border-radius:50% 50% 50% 0;width:28px;height:28px;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,0.2);cursor:pointer;"><span style="transform:rotate(45deg)">${i+1}</span></div>`,
+      iconSize:[28,28],iconAnchor:[14,28],className:''
+    });
+    const m=L.marker([p.lat,p.lng],{icon}).addTo(map);
+    m.on('click',()=>selectProp(i));
+    markers.push(m);
+  });
+}
+
+function renderMapList(props) {
+  const list=document.getElementById('map-list');
+  const badgeColors={mansion:'#e8f0fb',house:'#edf7ed',land:'#fff3e0'};
+  const textColors={mansion:'#1a4fa0',house:'#1a5e20',land:'#8a4500'};
+  list.innerHTML=props.map((p,i)=>`
+    <div class="map-list-item" onclick="selectProp(${i})">
+      <div class="map-list-num">${i+1}</div>
+      <div class="map-list-body">
+        <div class="map-list-name">${p.name}</div>
+        <div class="map-list-meta">
+          <span style="background:${badgeColors[p.type]};color:${textColors[p.type]};padding:1px 6px;border-radius:3px;font-size:10px;">${p.typeName}</span>
+          　${p.area}㎡${p.age!==null?`　築${p.age}年`:''}　📍${p.dist}m
+        </div>
+      </div>
+      <div>
+        <div class="map-list-price">${p.price.toLocaleString()}万</div>
+        <button class="send-satei-mini" id="ssbtn-${i}" onclick="event.stopPropagation();sendToSatei(${i})">査定へ</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderMapStats(props) {
+  if (!props.length) return;
+  const prices=props.map(p=>p.price);
+  const tankas=props.map(p=>p.tanka);
+  document.getElementById('ms-avg').textContent=(Math.round(prices.reduce((a,b)=>a+b,0)/prices.length)).toLocaleString();
+  document.getElementById('ms-tanka').textContent=(Math.round(tankas.reduce((a,b)=>a+b,0)/tankas.length*10)/10).toFixed(1);
+  document.getElementById('ms-count').textContent=props.length;
+  document.getElementById('map-stats').classList.add('show');
+}
+
+function selectProp(idx) {
+  const p=allProps[idx];
+  map.panTo([p.lat,p.lng],{animate:true,duration:.5});
+}
+
+function sendToSatei(idx) {
+  const p=allProps[idx];
+  const existing=JSON.parse(localStorage.getItem('satei_listings')||'[]');
+  if (!existing.find(e=>e.name===p.name&&e.price===p.price)) {
+    existing.push({name:p.name,price:p.price,area:p.area,age:p.age||''});
+    localStorage.setItem('satei_listings',JSON.stringify(existing));
+  }
+  const btn=document.getElementById(`ssbtn-${idx}`);
+  if (btn){btn.textContent='✓ 追加済';btn.classList.add('sent');}
+  showToast(`「${p.name}」を査定エンジンに追加`);
+}
+
+// ===== SATEI =====
+function initSatei() {
+  for(let i=0;i<2;i++) addCaseRow();
+  for(let i=0;i<2;i++) addListRow();
+}
+
+function makeRow(containerId, prefix, idx) {
+  const div=document.createElement('div');
+  div.className='case-row';div.id=`${prefix}-row-${idx}`;
+  div.innerHTML=`
+    <input class="case-input" placeholder="所在地・物件名" id="${prefix}_loc_${idx}">
+    <input class="case-input" type="number" placeholder="万円" id="${prefix}_price_${idx}" oninput="updateTanka('${prefix}',${idx})">
+    <input class="case-input" type="number" placeholder="㎡" id="${prefix}_area_${idx}" oninput="updateTanka('${prefix}',${idx})" step="0.1">
+    <input class="case-input" type="number" placeholder="年" id="${prefix}_age_${idx}">
+    <div class="tanka-tag" id="${prefix}_tanka_${idx}">—</div>
+  `;
+  document.getElementById(containerId).appendChild(div);
+}
+
+function addCaseRow(){makeRow('case-rows','c',caseIdx++);}
+function addListRow(){makeRow('list-rows','l',listIdx++);}
+
+function updateTanka(prefix,idx) {
+  const p=parseFloat(document.getElementById(`${prefix}_price_${idx}`)?.value)||0;
+  const a=parseFloat(document.getElementById(`${prefix}_area_${idx}`)?.value)||0;
+  const el=document.getElementById(`${prefix}_tanka_${idx}`);
+  if(el) el.textContent=(p>0&&a>0)?(p/a).toFixed(1)+'万/㎡':'—';
+}
+
+function getRows(prefix,max) {
+  const rows=[];
+  for(let i=0;i<max;i++){
+    const locEl=document.getElementById(`${prefix}_loc_${i}`);
+    if(!locEl) continue;
+    const p=parseFloat(document.getElementById(`${prefix}_price_${i}`)?.value);
+    const a=parseFloat(document.getElementById(`${prefix}_area_${i}`)?.value);
+    if(p>0&&a>0) rows.push({loc:locEl.value,price:p,area:a,tanka:p/a});
+  }
+  return rows;
+}
+
+function importFromMap() {
+  const data=JSON.parse(localStorage.getItem('satei_listings')||'[]');
+  if(!data.length){showToast('マップで物件を追加してください');return;}
+  data.forEach(p=>{
+    const idx=listIdx;
+    addListRow();
+    setTimeout(()=>{
+      const locEl=document.getElementById(`l_loc_${idx}`);
+      const priceEl=document.getElementById(`l_price_${idx}`);
+      const areaEl=document.getElementById(`l_area_${idx}`);
+      const ageEl=document.getElementById(`l_age_${idx}`);
+      if(locEl) locEl.value=p.name;
+      if(priceEl) priceEl.value=p.price;
+      if(areaEl) areaEl.value=p.area;
+      if(ageEl) ageEl.value=p.age||'';
+      updateTanka('l',idx);
+    },30);
+  });
+  const banner=document.getElementById('import-banner');
+  banner.textContent=`✓ ${data.length}件の物件をマップから取り込みました`;
+  banner.style.display='block';
+  setTimeout(()=>{banner.style.opacity='0';setTimeout(()=>{banner.style.display='none';banner.style.opacity='1';},500);},3000);
+  localStorage.removeItem('satei_listings');
+  showToast(`${data.length}件を取り込みました`);
+}
+
+function calcSatei() {
+  const targetArea=parseFloat(document.getElementById('s-area').value)||0;
+  if(!targetArea){showToast('面積を入力してください');return;}
+  const cases=getRows('c',caseIdx);
+  const listings=getRows('l',listIdx);
+  if(!cases.length&&!listings.length){showToast('事例を1件以上入力してください');return;}
+  const mukiAdj=parseInt(document.getElementById('s-muki').value)||0;
+  const reformAdj=parseInt(document.getElementById('s-reform').value)||0;
+  const kanriAdj=parseInt(document.getElementById('s-kanri').value)||0;
+  const totalAdj=mukiAdj+reformAdj+kanriAdj;
+  const caseTanka=cases.length?cases.reduce((s,r)=>s+r.tanka,0)/cases.length:null;
+  const listTankaRaw=listings.length?listings.reduce((s,r)=>s+r.tanka,0)/listings.length:null;
+  const listTanka=listTankaRaw?listTankaRaw*0.95:null;
+  let avgTanka;
+  if(caseTanka&&listTanka) avgTanka=caseTanka*0.6+listTanka*0.4;
+  else avgTanka=caseTanka||listTanka;
+  const beforePrice=Math.round(avgTanka*targetArea);
+  const finalPrice=Math.round(beforePrice*(1+totalAdj/100)/50)*50;
+  const lower=Math.round(finalPrice*0.95/50)*50;
+  const upper=Math.round(finalPrice*1.05/50)*50;
+  document.getElementById('r-final').textContent=finalPrice.toLocaleString()+'万円';
+  document.getElementById('r-range').textContent=`価格帯：${lower.toLocaleString()}〜${upper.toLocaleString()}万円`;
+  let detail='【算出根拠】\n';
+  if(caseTanka) detail+=`・成約事例 ${cases.length}件 平均㎡単価：${caseTanka.toFixed(2)}万円/㎡（ウェイト60%）\n`;
+  if(listTanka) detail+=`・販売中 ${listings.length}件 補正後㎡単価：${listTanka.toFixed(2)}万円/㎡（ウェイト40%）\n`;
+  detail+=`・加重平均㎡単価：${avgTanka.toFixed(2)}万円/㎡\n`;
+  detail+=`・補正前：${beforePrice.toLocaleString()}万円\n`;
+  detail+=`・補正合計：${totalAdj>=0?'+':''}${totalAdj}%\n`;
+  detail+=`・査定価格：${finalPrice.toLocaleString()}万円`;
+  document.getElementById('r-detail').textContent=detail;
+  document.getElementById('satei-result').classList.add('show');
+  stats.satei++;updateStats();
+}
+
+function sendSateiToAI() {
+  const type=document.getElementById('s-type').value;
+  const area=document.getElementById('s-area').value;
+  const age=document.getElementById('s-age').value;
+  const final=document.getElementById('r-final').textContent;
+  const range=document.getElementById('r-range').textContent;
+  const detail=document.getElementById('r-detail').textContent;
+  const text=`以下の査定結果で不動産査定コメントを400〜500文字で作成してください。\n種別：${type} / 面積：${area}㎡ / 築年数：${age}年\n査定価格：${final}\n${range}\n${detail}`;
+  navigator.clipboard.writeText(text).then(()=>showToast('クリップボードにコピー→Claudeに貼り付けてください'));
+}
+
+// ===== BUKKEN =====
+function switchBukkenTab(tab, btn) {
+  document.querySelectorAll('.tab-switch-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('bukken-desc').style.display=tab==='desc'?'':'none';
+  document.getElementById('bukken-satei-doc').style.display=tab==='satei-doc'?'':'none';
+}
+
+async function genDesc() {
+  const type=document.getElementById('b-type').value;
+  const price=document.getElementById('b-price').value;
+  const addr=document.getElementById('b-addr').value;
+  const eki=document.getElementById('b-eki').value;
+  const madori=document.getElementById('b-madori').value;
+  const area=document.getElementById('b-area').value;
+  const age=document.getElementById('b-age').value;
+  const features=document.getElementById('b-features').value;
+  const notes=document.getElementById('b-notes').value;
+  const tone=document.getElementById('b-tone').value;
+  const result=document.getElementById('desc-result');
+  result.className='gen-result show';
+  result.innerHTML='<div class="loading-dots"><span></span><span></span><span></span></div>';
+  document.getElementById('desc-copy').classList.remove('show');
+  const prompt=`不動産物件の説明文を作成してください。見出し付き3〜4段落、400〜600文字。文体：${tone}。\n種別:${type} 価格:${price} 所在地:${addr} 交通:${eki} 間取り:${madori} 面積:${area}㎡ 築年数:${age} 設備:${features} 補足:${notes}\n説明文のみ出力してください。`;
+  try {
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})});
+    const data=await res.json();
+    const text=data.content?.[0]?.text||'エラーが発生しました';
+    result.textContent=text;
+    document.getElementById('desc-char').textContent=`${text.length}文字`;
+    document.getElementById('desc-char').style.display='block';
+    document.getElementById('desc-copy').classList.add('show');
+    stats.gen++;updateStats();
+  } catch(e) {
+    result.textContent='生成に失敗しました。';
+  }
+}
+
+async function genSateiDoc() {
+  const date=document.getElementById('d-date').value;
+  const tanto=document.getElementById('d-tanto').value;
+  const iraisha=document.getElementById('d-iraisha').value;
+  const addr=document.getElementById('d-addr').value;
+  const price=document.getElementById('d-price').value;
+  const range=document.getElementById('d-range').value;
+  const result=document.getElementById('satei-doc-result');
+  result.className='gen-result show';
+  result.innerHTML='<div class="loading-dots"><span></span><span></span><span></span></div>';
+  document.getElementById('doc-copy').classList.remove('show');
+  const prompt=`不動産査定書のコメントを400〜500文字で作成してください。査定日:${date} 担当:${tanto} 依頼者:${iraisha} 所在地:${addr} 査定価格:${price}万円 価格帯:${range}\n1.価格根拠 2.物件の強み 3.売却アドバイス の構成で。コメント文のみ出力してください。`;
+  try {
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})});
+    const data=await res.json();
+    const text=data.content?.[0]?.text||'エラーが発生しました';
+    result.textContent=text;
+    document.getElementById('d-comment').value=text;
+    document.getElementById('doc-copy').classList.add('show');
+  } catch(e) {
+    result.textContent='生成に失敗しました。';
+  }
+}
+
+function copyDesc() {
+  const text=document.getElementById('desc-result').textContent;
+  navigator.clipboard.writeText(text).then(()=>showToast('コピーしました！'));
+}
+function copyDoc() {
+  const text=document.getElementById('d-comment').value;
+  navigator.clipboard.writeText(text).then(()=>showToast('コピーしました！'));
+}
+
+// ===== STATS =====
+const stats={search:0,satei:0,gen:0};
+function updateStats() {
+  document.getElementById('s-search').textContent=stats.search;
+  document.getElementById('s-satei').textContent=stats.satei;
+  document.getElementById('s-gen').textContent=stats.gen;
+}
+
+// ===== DATE =====
+function setTodayDate() {
+  const now=new Date();
+  const y=now.getFullYear(),m=String(now.getMonth()+1).padStart(2,'0'),d=String(now.getDate()).padStart(2,'0');
+  const dateInput=document.getElementById('d-date');
+  if(dateInput) dateInput.value=`${y}-${m}-${d}`;
+}
+
+// ===== TOAST =====
+function showToast(msg) {
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+// Enter key for map search
+document.getElementById('map-addr').addEventListener('keydown',e=>{if(e.key==='Enter')doMapSearch();});
+</script>
+</body>
+</html>
